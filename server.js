@@ -10,7 +10,7 @@ const port = 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Configure Multer for image uploads (5MB Limit)
 const storage = multer.diskStorage({
