@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vaisperia - Экологический Патруль Нукуса</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- 1. Экран авторизации (Login Screen) -->
+    <div id="login-screen" class="login-wrapper">
+        <div class="login-card">
+            <div class="login-logo">
+                <span class="logo-symbol">🌱</span>
+                <h2>Vaisperia</h2>
+                <p>Экологический контроль Нукуса</p>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group-login">
+                    <label for="username">Логин</label>
+                    <input type="text" id="username" placeholder="Введите имя пользователя" value="Muratbek_92" required>
+                </div>
+                
+                <div class="form-group-login">
+                    <label for="password">Пароль</label>
+                    <input type="password" id="password" placeholder="••••••••" value="admin123" required>
+                </div>
+                
+                <button type="submit" class="btn-login">Войти</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Основной интерфейс приложения (Main App Wrapper) -->
+    <div id="app-screen" class="app-wrapper hidden">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="logo-emoji">🌱</span>
+                <h1>Vaisperia</h1>
+            </div>
+            <button id="logoutBtn" class="btn-logout" title="Выйти">
+                <span class="logout-icon">↩</span>
+            </button>
+        </header>
+
+        <!-- Main Content (Seeded Screens) -->
+        <main class="app-content">
+            
+            <!-- Вкладка: Главная -->
+            <section id="section-home" class="tab-section active">
+                <div class="welcome-box">
+                    <div class="welcome-text">
+                        <span class="user-greeting">Рады видеть вас,</span>
+                        <h2 class="user-name" id="home-username">Muratbek_92</h2>
+                    </div>
+                    <div class="points-badge-box">
+                        <span class="points-title">Баланс эко-коинов</span>
+                        <div class="points-value">
+                            <span class="points-num" id="home-balance">340</span>
+                            <span class="points-icon">🍃</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-overview-card">
+                    <h3>Ваш вклад в город</h3>
+                    <div class="rank-card">
+                        <div class="rank-emoji">🛡️</div>
+                        <div class="rank-details">
+                            <span class="rank-label">Текущий ранг:</span>
+                            <strong class="rank-name" id="home-rank">Эко-патруль</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Как заработать баллы?</h3>
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-icon">📸</div>
+                            <h4>Сообщите о проблеме</h4>
+                            <p>Сфотографируйте свалку, сломанный фонарь или засуху на улице Нукуса.</p>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-icon">🍃</div>
+                            <h4>Получите +50 баллов</h4>
+                            <p>Каждая подтвержденная заявка приносит эко-коины на ваш игровой счет в приложении.</p>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-icon">🎁</div>
+                            <h4>Обменяйте в магазине</h4>
+                            <p>Покупайте стильные аксессуары, эко-сувениры или получайте скидки у партнеров Vaisperia!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Вкладка: Карта (Leaflet) -->
+            <section id="section-map" class="tab-section hidden">
+                <div class="map-container-wrapper">
+                    <div id="map"></div>
+                </div>
+            </section>
+
+            <!-- Вкладка: Добавить (Report Form) -->
+            <section id="section-report" class="tab-section hidden">
+                <div class="container report-form-wrapper">
+                    <h2>Сообщить о городской проблеме</h2>
+                    
+                    <!-- Карточка прогресса за месяц -->
+                    <div class="progress-card">
+                        <div class="progress-header">
+                            <span class="progress-title">Прогресс за месяц</span>
+                            <span class="progress-value-label"><span id="month-progress-current">0</span>/10 отчетов</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="month-progress-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="progress-footer">
+                            <span>Цель: 10 отчетов для бонуса</span>
+                            <span id="month-progress-percent">0%</span>
+                        </div>
+                    </div>
+
+                    <div id="messageBox" class="alert"></div>
+
+                    <form id="reportForm">
+                        <!-- Плитки категорий -->
+                        <div class="form-group">
+                            <label>Категория проблемы</label>
+                            <div class="category-tiles-container" id="category-tiles">
+                                <div class="category-tile selected" data-value="Дороги">
+                                    <span class="category-icon">🚗</span>
+                                    <span class="category-label">Дороги</span>
+                                </div>
+                                <div class="category-tile" data-value="Вода">
+                                    <span class="category-icon">💧</span>
+                                    <span class="category-label">Вода</span>
+                                </div>
+                                <div class="category-tile" data-value="Электричество">
+                                    <span class="category-icon">⚡</span>
+                                    <span class="category-label">Элек-тво</span>
+                                </div>
+                                <div class="category-tile" data-value="Безопасность">
+                                    <span class="category-icon">🛡️</span>
+                                    <span class="category-label">Безопасн.</span>
+                                </div>
+                                <div class="category-tile" data-value="Мусор">
+                                    <span class="category-icon">🗑️</span>
+                                    <span class="category-label">Мусор</span>
+                                </div>
+                                <div class="category-tile" data-value="Здания">
+                                    <span class="category-icon">🏢</span>
+                                    <span class="category-label">Здания</span>
+                                </div>
+                                <div class="category-tile" data-value="Другое">
+                                    <span class="category-icon">✨</span>
+                                    <span class="category-label">Другое</span>
+                                </div>
+                            </div>
+                            <input type="hidden" id="report-category" name="category" value="Дороги">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="photo">Фотография проблемы (До 5МБ)</label>
+                            <div class="file-upload-wrapper">
+                                <input type="file" id="photo" name="photo" accept="image/*" capture="environment" required>
+                                <div class="file-upload-dummy">
+                                    <span class="file-dummy-icon">📸</span>
+                                    <span class="file-dummy-text" id="photo-selected-name">Сделать снимок на месте</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description">Описание проблемы</label>
+                            <textarea id="description" name="description" placeholder="Детально опишите проблему (например: открытый люк, куча мусора за домом, поломка освещения...)" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Координаты местоположения</label>
+                            <div class="location-fields">
+                                <input type="text" id="latitude" name="latitude" placeholder="Широта" required>
+                                <input type="text" id="longitude" name="longitude" placeholder="Долгота" required>
+                            </div>
+                            <small id="locationStatus">Загрузка геолокации...</small>
+                            <small class="location-hint">Вы также можете установить маркер, просто кликнув по нужному месту на вкладке «Карта».</small>
+                        </div>
+
+                        <button type="submit" class="btn-submit" id="submitBtn" disabled>Отправить отчет</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Вкладка: Магазин -->
+            <section id="section-shop" class="tab-section hidden">
+                <div class="shop-wrapper">
+                    <div class="section-title-box">
+                        <h2>Магазин эко-наград</h2>
+                        <p>Меняйте накопленные эко-коины на классные бонусы</p>
+                    </div>
+                    
+                    <div class="shop-grid" id="shop-items-container">
+                        <!-- Награды будут сгенерированы в JS, но заложим структуру для примера -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Вкладка: Профиль -->
+            <section id="section-profile" class="tab-section hidden">
+                <div class="profile-wrapper">
+                    <!-- Аватарка и Общие статы -->
+                    <div class="profile-card">
+                        <div class="profile-main-info">
+                            <div class="avatar-circle">
+                                <span>MN</span>
+                                <div class="avatar-leaf">🌱</div>
+                            </div>
+                            <div class="profile-text">
+                                <h3 id="profile-username-tag">Muratbek_92</h3>
+                                <span class="profile-rank-badge">🛡️ Эко-патруль</span>
+                            </div>
+                        </div>
+                        <div class="profile-stats-row">
+                            <div class="p-stat">
+                                <span class="p-stat-val" id="profile-balance">340</span>
+                                <span class="p-stat-lbl">Коинов</span>
+                            </div>
+                            <div class="p-stat">
+                                <span class="p-stat-val" id="profile-reports-count">0</span>
+                                <span class="p-stat-lbl">Заявок</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Индикатор уровня и XP Progress -->
+                    <div class="xp-level-card">
+                        <div class="xp-level-header">
+                            <span class="xp-level-title">Уровень <span id="profile-level-val">1</span></span>
+                            <span class="xp-detail-val"><span id="profile-xp-val">0</span> / 100 XP</span>
+                        </div>
+                        <div class="xp-progress-bar-wrapper">
+                            <div class="xp-progress-bar-fill" id="profile-xp-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Достижения (Ачивки) -->
+                    <div class="achievements-section">
+                        <h3>Ваши эко-достижения</h3>
+                        <div class="achievements-grid" id="achievements-container">
+                            <!-- Генерируется динамически с красивой анимацией в app.js -->
+                        </div>
+                    </div>
+
+                    <!-- История обращений (Реальный Бэкенд) -->
+                    <div class="history-section">
+                        <h3>История ваших сообщений</h3>
+                        <div class="history-list" id="profile-history-list">
+                            <div class="history-placeholder">Загрузка истории обращений...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Fixed Bottom Navigation Bar -->
+        <nav class="bottom-nav">
+            <button class="nav-tab active" data-tab="home">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">Главная</span>
+            </button>
+            <button class="nav-tab" data-tab="map">
+                <span class="nav-icon">🗺️</span>
+                <span class="nav-label">Карта</span>
+            </button>
+            <button class="nav-tab" data-tab="report">
+                <span class="nav-icon">➕</span>
+                <span class="nav-label">Добавить</span>
+            </button>
+            <button class="nav-tab" data-tab="shop">
+                <span class="nav-icon">🛍️</span>
+                <span class="nav-label">Магазин</span>
+            </button>
+            <button class="nav-tab" data-tab="profile">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">Профиль</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <!-- QR Code Coupon Voucher System Modal -->
+    <div id="qr-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h3>Ваш эко-купон</h3>
+            <p id="qr-coupon-item-name">Название купона</p>
+            
+            <div class="qr-container">
+                <svg id="coupon-qr" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Будет сгенерирован красивый стилизованный QR-код векторно -->
+                    <rect width="100" height="100" fill="#fff" rx="8"/>
+                    <!-- QR simulation paths -->
+                    <path d="M10,10 h20 v20 h-20 z" fill="#1e3f20" />
+                    <path d="M15,15 h10 v10 h-10 z" fill="#fff" />
+                    <path d="M70,10 h20 v20 h-20 z" fill="#1e3f20" />
+                    <path d="M75,15 h10 v10 h-10 z" fill="#fff" />
+                    <path d="M10,70 h20 v20 h-20 z" fill="#1e3f20" />
+                    <path d="M15,75 h10 v10 h-10 z" fill="#fff" />
+                    <!-- Random blocks patterns -->
+                    <path d="M40,15 h5 v5 h-5 z M50,10 h10 v5 h-10 z M45,25 h15 v5 h-15 z" fill="#1e3f20" />
+                    <path d="M10,40 h10 v5 h-10 z M25,45 h5 v10 h-5 z M15,55 h10 v5 h-10 z" fill="#1e3f20" />
+                    <path d="M70,40 h15 v5 h-15 z M80,50 h10 v10 h-10 z M75,65 h5 v10 h-5 z" fill="#1e3f20" />
+                    <path d="M40,70 h5 v10 h-5 z M50,80 h15 v5 h-15 z M45,90 h10 v5 h-10 z" fill="#1e3f20" />
+                    <path d="M40,40 h20 v20 h-20 z" fill="#128c7e" />
+                    <path d="M45,45 h10 v10 h-10 z" fill="#fff" />
+                </svg>
+                <div class="qr-code-text" id="qr-coupon-code">VAISPERIA-XXXXXX</div>
+            </div>
+            
+            <p class="qr-instruction">Покажите этот QR-код партнеру для выдачи и получения эко-подарка.</p>
+            <button class="btn-close-modal" id="closeQrModalBtn">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet Heatmap Layer Plugin -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
