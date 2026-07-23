@@ -17,6 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const video = document.getElementById('bio-webcam-video');
     let mediaStream = null;
 
+    const profileLogoutBtn = document.getElementById('profileLogoutBtn');
+
     function checkAuth() {
         const isLoggedIn = (localStorage.getItem('vaisperia_isLoggedIn') === 'true' || localStorage.getItem('isAuth') === 'true');
         if (isLoggedIn) {
@@ -24,9 +26,17 @@ document.addEventListener("DOMContentLoaded", () => {
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
             
-            const username = localStorage.getItem('vaisperia_username') || 'Muratbek_92';
-            document.getElementById('home-username').textContent = username;
-            document.getElementById('profile-username-tag').textContent = username;
+            const username = localStorage.getItem('vaisperia_username') || 'Гражданин';
+            const homeUserEl = document.getElementById('home-username');
+            const profileUserTag = document.getElementById('profile-username-tag');
+            
+            if (homeUserEl) homeUserEl.textContent = username;
+            if (profileUserTag) profileUserTag.textContent = username;
+
+            const avatarSpan = document.querySelector('.avatar-circle span');
+            if (avatarSpan && username) {
+                avatarSpan.textContent = username.substring(0, 2).toUpperCase();
+            }
             
             // Инициализация коинов
             initCoins();
@@ -43,6 +53,8 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             loginScreen.classList.remove('hidden');
             appScreen.classList.add('hidden');
+            if (bioStep2) bioStep2.classList.add('hidden');
+            if (bioStep1) bioStep1.classList.remove('hidden');
         }
     }
 
@@ -210,12 +222,18 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    function performLogout() {
+        localStorage.removeItem('vaisperia_isLoggedIn');
+        localStorage.removeItem('isAuth');
+        localStorage.removeItem('vaisperia_username');
+        checkAuth();
+    }
+
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('vaisperia_isLoggedIn');
-            localStorage.removeItem('isAuth');
-            checkAuth();
-        });
+        logoutBtn.addEventListener('click', performLogout);
+    }
+    if (profileLogoutBtn) {
+        profileLogoutBtn.addEventListener('click', performLogout);
     }
 
     // -----------------------------------------------------

@@ -18,7 +18,18 @@
     <div id="login-screen" class="login-wrapper">
         <div class="login-card" style="max-width: 420px;">
             <div class="login-logo">
-                <span class="logo-symbol">🧬</span>
+                <span class="logo-symbol">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;">
+                        <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                        <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                        <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                        <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                        <path d="M9 9h.01"/>
+                        <path d="M15 9h.01"/>
+                        <path d="M10 13a2 2 0 0 0 4 0"/>
+                        <path d="M12 17h.01"/>
+                    </svg>
+                </span>
                 <h2>Vaisperia</h2>
                 <p id="bio-subtitle">Обязательный биометрический контроль гражданина</p>
             </div>
@@ -30,12 +41,12 @@
                 <form id="bioStep1Form">
                     <div class="form-group-login">
                         <label for="username">Никнейм гражданина</label>
-                        <input type="text" id="username" placeholder="Введите ваш никнейм" value="Muratbek_92" required>
+                        <input type="text" id="username" placeholder="Введите ваш никнейм" required>
                     </div>
                     
                     <div class="form-group-login">
                         <label for="password">Пароль доступа</label>
-                        <input type="password" id="password" placeholder="••••••••" value="admin123" required>
+                        <input type="password" id="password" placeholder="••••••••" required>
                     </div>
                     
                     <button type="submit" class="btn-login" id="btnGoToBioStep2">Далее: Сканирование лица ➔</button>
@@ -69,9 +80,6 @@
                 <span class="logo-emoji">🌱</span>
                 <h1>Vaisperia</h1>
             </div>
-            <button id="logoutBtn" class="btn-logout" title="Выйти">
-                <span class="logout-icon">↩</span>
-            </button>
         </header>
 
         <!-- Main Content (Seeded Screens) -->
@@ -82,7 +90,7 @@
                 <div class="welcome-box">
                     <div class="welcome-text">
                         <span class="user-greeting">Рады видеть вас,</span>
-                        <h2 class="user-name" id="home-username">Muratbek_92</h2>
+                        <h2 class="user-name" id="home-username">Гражданин</h2>
                     </div>
                     <div class="points-badge-box">
                         <span class="points-title">Баланс эко-коинов</span>
@@ -244,11 +252,11 @@
                     <div class="profile-card">
                         <div class="profile-main-info">
                             <div class="avatar-circle">
-                                <span>MN</span>
+                                <span>ГР</span>
                                 <div class="avatar-leaf">🌱</div>
                             </div>
                             <div class="profile-text">
-                                <h3 id="profile-username-tag">Muratbek_92</h3>
+                                <h3 id="profile-username-tag">Гражданин</h3>
                                 <span class="profile-rank-badge">🛡️ Эко-патруль</span>
                             </div>
                         </div>
@@ -288,6 +296,18 @@
                         <h3>История ваших сообщений</h3>
                         <div class="history-list" id="profile-history-list">
                             <div class="history-placeholder">Загрузка истории обращений...</div>
+                        </div>
+                    </div>
+
+                    <!-- Настройки аккаунта -->
+                    <div class="settings-section" style="margin-top: 20px;">
+                        <h3>Настройки аккаунта</h3>
+                        <div class="settings-card">
+                            <div class="settings-info">
+                                <span class="settings-title">Текущая сессия</span>
+                                <span class="settings-desc">Завершить работу в Vaisperia</span>
+                            </div>
+                            <button id="profileLogoutBtn" class="btn-logout-profile">Выйти из аккаунта ↩</button>
                         </div>
                     </div>
                 </div>
