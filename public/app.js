@@ -239,24 +239,44 @@ document.addEventListener("DOMContentLoaded", () => {
     // -----------------------------------------------------
     // 2. ИГРОВАЯ СИСТЕМА КОИНОВ (Gamification score)
     // -----------------------------------------------------
+    function getCurrentUsername() {
+        return localStorage.getItem('vaisperia_username') || '';
+    }
+
+    function getCoinsKey() {
+        const user = getCurrentUsername() || 'guest';
+        return `vaisperia_balance_${user}`;
+    }
+
     function initCoins() {
-        let balance = localStorage.getItem('vaisperia_balance');
+        const user = getCurrentUsername();
+        const key = getCoinsKey();
+        let balance = localStorage.getItem(key);
         if (balance === null) {
-            balance = 340;
-            localStorage.setItem('vaisperia_balance', balance);
+            if (user === 'Adam_Vaisper') {
+                balance = localStorage.getItem('vaisperia_balance') !== null ? localStorage.getItem('vaisperia_balance') : 340;
+            } else {
+                balance = 0;
+            }
+            localStorage.setItem(key, balance);
         }
         updateCoinsUI();
     }
 
     function getCoins() {
-        let balance = localStorage.getItem('vaisperia_balance');
-        return balance !== null ? parseInt(balance, 10) : 340;
+        const user = getCurrentUsername();
+        const key = getCoinsKey();
+        let balance = localStorage.getItem(key);
+        if (balance === null) {
+            return (user === 'Adam_Vaisper') ? 340 : 0;
+        }
+        return parseInt(balance, 10);
     }
 
     function addCoins(amount) {
         const current = getCoins();
         const updated = current + amount;
-        localStorage.setItem('vaisperia_balance', updated);
+        localStorage.setItem(getCoinsKey(), updated);
         updateCoinsUI();
     }
 
@@ -269,10 +289,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (profileBal) profileBal.textContent = balance;
     }
 
-    // Лимит баллов в день и прогресс за месяц
+    // Лимит баллов в день для пользователя
     function getDailyPoints() {
+        const user = getCurrentUsername() || 'guest';
         const today = new Date().toISOString().split('T')[0];
-        const data = localStorage.getItem('vaisperia_dailyPoints');
+        const data = localStorage.getItem(`vaisperia_dailyPoints_${user}`);
         if (!data) return 0;
         const [date, score] = data.split(':');
         if (date === today) {
@@ -282,10 +303,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function addDailyPoints(amount) {
+        const user = getCurrentUsername() || 'guest';
         const today = new Date().toISOString().split('T')[0];
         const currentDaily = getDailyPoints();
         const newDaily = currentDaily + amount;
-        localStorage.setItem('vaisperia_dailyPoints', `${today}:${newDaily}`);
+        localStorage.setItem(`vaisperia_dailyPoints_${user}`, `${today}:${newDaily}`);
     }
 
     function updateMonthProgress(problems) {
@@ -1051,6 +1073,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const formData = new FormData(reportForm);
+            formData.append('username', localStorage.getItem('vaisperia_username') || 'Adam_Vaisper');
 
             try {
                 submitBtn.disabled = true;
@@ -1268,15 +1291,20 @@ document.addEventListener("DOMContentLoaded", () => {
         fetch('/api/problems')
             .then(res => res.json())
             .then(data => {
-                // Обновляем счетчик
-                if (countBadge) countBadge.textContent = data.length;
+                const currentUsername = localStorage.getItem('vaisperia_username') || '';
+                
+                // Фильтруем ТОЛЬКО личные отчеты текущего пользователя для вкладки Профиль
+                const userProblems = data.filter(prob => prob.username === currentUsername);
 
-                // Пересчитываем ачивки
-                updateAchievements(data.length);
+                // Обновляем личный счетчик
+                if (countBadge) countBadge.textContent = userProblems.length;
 
-                // Рассчитываем уровень и XP
-                const reportsCount = data.length;
-                const totalXP = reportsCount * 25; // 25 XP за каждый репорт
+                // Пересчитываем ачивки по личным отчетам
+                updateAchievements(userProblems.length);
+
+                // Рассчитываем личный уровень и XP
+                const reportsCount = userProblems.length;
+                const totalXP = reportsCount * 25;
                 const level = Math.floor(totalXP / 100) + 1;
                 const currentLevelXP = totalXP % 100;
 
@@ -1288,17 +1316,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (xpVal) xpVal.textContent = currentLevelXP;
                 if (xpFill) xpFill.style.width = currentLevelXP + '%';
 
-                // Обновляем прогресс за месяц
-                updateMonthProgress(data);
+                // Обновляем прогресс за месяц по личным отчетам
+                updateMonthProgress(userProblems);
 
-                if (data.length === 0) {
+                if (userProblems.length === 0) {
                     listContainer.innerHTML = `<div class="history-placeholder">Вы пока не отправляли заявок. Вкладка "Карта" ждет вас!</div>`;
                     return;
                 }
 
                 listContainer.innerHTML = "";
 
-                data.forEach(prob => {
+                userProblems.forEach(prob => {
                     const state = typeof getProblemState === 'function' ? getProblemState(prob) : { status: 'new', createdAt: Date.now() };
                     const dateStr = new Date(state.createdAt).toLocaleDateString("ru-RU", {
                         day: 'numeric',

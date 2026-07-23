@@ -49,7 +49,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
   else console.log('Connected to SQLite database');
 });
 
-// Ensure Users table exists
+// Ensure Users and Problems tables exist
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -62,6 +62,31 @@ db.serialize(() => {
   `, (err) => {
     if (err) console.error('Error creating users table', err);
     else console.log('Users table ready');
+  });
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS problems (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      photo_url TEXT,
+      description TEXT NOT NULL,
+      latitude REAL NOT NULL,
+      longitude REAL NOT NULL,
+      username TEXT,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (err) console.error('Error creating problems table', err);
+    else console.log('Problems table ready');
+  });
+
+  // Migration: Add username column to problems if missing
+  db.run(`ALTER TABLE problems ADD COLUMN username TEXT`, (err) => {
+    // Column already exists or table freshly created
+  });
+
+  // Preserve history for Adam_Vaisper: associate all legacy/unassigned records to Adam_Vaisper
+  db.run(`UPDATE problems SET username = 'Adam_Vaisper' WHERE username IS NULL OR username = '' OR username = 'Muratbek_92'`, (err) => {
+    if (!err) console.log('Legacy problem records assigned to Adam_Vaisper');
   });
 });
 
@@ -180,7 +205,7 @@ app.post('/api/problems', (req, res) => {
       return res.status(400).json({ error: err.message });
     }
 
-    const { description, latitude, longitude } = req.body;
+    const { description, latitude, longitude, username } = req.body;
     let photoUrl = null;
 
     if (req.file) {
@@ -191,12 +216,14 @@ app.post('/api/problems', (req, res) => {
        return res.status(400).json({ error: 'Description and location are required.' });
     }
 
+    const submitter = (username && username.trim()) ? username.trim() : 'Adam_Vaisper';
+
     const stmt = db.prepare(`
-      INSERT INTO problems (photo_url, description, latitude, longitude)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO problems (photo_url, description, latitude, longitude, username)
+      VALUES (?, ?, ?, ?, ?)
     `);
 
-    stmt.run([photoUrl, description, latitude, longitude], function(err) {
+    stmt.run([photoUrl, description, latitude, longitude, submitter], function(err) {
       if (err) {
          res.status(500).json({ error: err.message });
          return;
