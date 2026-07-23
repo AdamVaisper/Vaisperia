@@ -71,6 +71,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    function formatDateTashkent(dateVal, options = {}) {
+        if (!dateVal) return 'N/A';
+        let d = new Date(dateVal);
+        if (typeof dateVal === 'string' && !dateVal.includes('T') && !dateVal.includes('Z')) {
+            d = new Date(dateVal.replace(' ', 'T') + 'Z');
+        }
+        if (isNaN(d.getTime())) return 'N/A';
+
+        const defaultOpts = {
+            timeZone: 'Asia/Tashkent',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        };
+
+        return d.toLocaleString('ru-RU', Object.assign({}, defaultOpts, options));
+    }
+
     function startWebcam() {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
@@ -825,11 +845,11 @@ document.addEventListener("DOMContentLoaded", () => {
             html += `
                 <div class="popup-meta">
                     <div>Статус: <span class="status-badge ${state.status}">${statusLabel}</span></div>
-                    <div>Создана: ${new Date(state.createdAt).toLocaleDateString("ru-RU")}</div>
+                    <div>Создана: ${formatDateTashkent(state.createdAt)}</div>
             `;
             
             if (state.status === 'resolved' && state.resolvedAt) {
-                 html += `<div>Решена: ${new Date(state.resolvedAt).toLocaleDateString("ru-RU")}</div>`;
+                 html += `<div>Решена: ${formatDateTashkent(state.resolvedAt)}</div>`;
             }
             html += `</div>`;
 
@@ -861,7 +881,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const contentContainer = sheet.querySelector('#bottomSheetContent');
             let statusLabel = state.status === 'new' ? 'Новая' : (state.status === 'in_progress' ? 'В обработке' : 'Решена');
-            let dateStr = new Date(state.createdAt).toLocaleDateString("ru-RU");
+            let dateStr = formatDateTashkent(state.createdAt);
 
             let imgHtml = "";
             if (problem.photo_url) {
@@ -881,7 +901,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
 
             if (state.status === 'resolved' && state.resolvedAt) {
-                html += `<div class="sheet-resolved-date">Решено: ${new Date(state.resolvedAt).toLocaleDateString("ru-RU")}</div>`;
+                html += `<div class="sheet-resolved-date">Решено: ${formatDateTashkent(state.resolvedAt)}</div>`;
             }
 
             if (state.status !== 'resolved') {
@@ -1328,11 +1348,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 userProblems.forEach(prob => {
                     const state = typeof getProblemState === 'function' ? getProblemState(prob) : { status: 'new', createdAt: Date.now() };
-                    const dateStr = new Date(state.createdAt).toLocaleDateString("ru-RU", {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                    });
+                    const dateStr = formatDateTashkent(state.createdAt);
 
                     let statusLabel = 'Новая';
                     if (state.status === 'in_progress') statusLabel = 'В обработке';

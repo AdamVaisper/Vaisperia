@@ -178,6 +178,23 @@
                 return localStorage.getItem('vaisperia_admin_pass');
             }
 
+            function formatDateTashkent(dateVal) {
+                if (!dateVal) return 'N/A';
+                let d = new Date(dateVal);
+                if (typeof dateVal === 'string' && !dateVal.includes('T') && !dateVal.includes('Z')) {
+                    d = new Date(dateVal.replace(' ', 'T') + 'Z');
+                }
+                if (isNaN(d.getTime())) return 'N/A';
+                return d.toLocaleString('ru-RU', {
+                    timeZone: 'Asia/Tashkent',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
             function loadAdminData() {
                 const token = getAdminToken();
                 if (!token) {
@@ -203,7 +220,7 @@
 
                     usersTableBody.innerHTML = '';
                     data.users.forEach(u => {
-                        const dateStr = new Date(u.created_at).toLocaleString('ru-RU');
+                        const dateStr = formatDateTashkent(u.created_at);
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>#${u.id}</td>
