@@ -467,18 +467,28 @@ document.addEventListener("DOMContentLoaded", () => {
         let currentFilter = 'all';
 
         const updateHeatmap = () => {
-             const points = allMarkersData.map(item => [item.problem.latitude, item.problem.longitude]);
-             
              if (!heatLayer) {
-                 let heatConfig = { radius: 25, blur: 15, maxZoom: 17 };
-                 if (points.length > 0 && points.length < 10) {
-                     heatConfig.max = 0.5;
-                 }
-                 heatLayer = L.heatLayer(points, heatConfig);
+                 heatLayer = L.layerGroup();
                  if (isHeatmapActive) heatLayer.addTo(map);
              } else {
-                 heatLayer.setLatLngs(points);
+                 heatLayer.clearLayers();
              }
+
+             allMarkersData.forEach(item => {
+                 const circle = L.circle([item.problem.latitude, item.problem.longitude], {
+                     radius: 120,
+                     color: '#FF0000',
+                     weight: 2.5,
+                     dashArray: '5, 5',
+                     fillColor: '#FF3300',
+                     fillOpacity: 0.2,
+                     interactive: false
+                 });
+                 heatLayer.addLayer(circle);
+                 if (circle.bringToBack) {
+                     circle.bringToBack();
+                 }
+             });
         };
 
         const updateStatsUI = () => {
