@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель Администратора - Vaisperia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .admin-body {
+            background-color: var(--bg-primary);
+            min-height: 100vh;
+            padding: 24px 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .admin-title {
+            font-family: var(--font-title);
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--eco-forest);
+        }
+        .admin-card {
+            background: #FFFFFF;
+            border-radius: var(--border-radius);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            margin-bottom: 24px;
+        }
+        .stat-counter {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .counter-icon {
+            font-size: 2.5rem;
+            background: var(--eco-mint-light);
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .counter-info h4 {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .counter-info .count-val {
+            font-family: var(--font-title);
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--eco-emerald);
+        }
+        .users-table-wrapper {
+            overflow-x: auto;
+        }
+        table.users-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        table.users-table th, table.users-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #E2E8F0;
+        }
+        table.users-table th {
+            background: #F8FAFC;
+            color: var(--text-muted);
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        .badge-biometric {
+            background: var(--eco-mint-light);
+            color: var(--eco-forest);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+        .admin-login-modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 90, 62, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="admin-auth-overlay" class="admin-login-modal">
+        <div class="login-card" style="max-width: 360px;">
+            <div class="login-logo">
+                <span class="logo-symbol">🔐</span>
+                <h2>Админ-панель</h2>
+                <p>Введите пароль администратора</p>
+            </div>
+            <form id="adminLoginForm">
+                <div class="form-group-login">
+                    <label for="adminPass">Пароль доступа</label>
+                    <input type="password" id="adminPass" placeholder="••••••••" required>
+                </div>
+                <div id="adminAuthError" class="alert error" style="display:none; margin-bottom:12px;"></div>
+                <button type="submit" class="btn-login">Войти в панель</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="admin-body">
+        <header class="admin-header">
+            <div class="admin-title">🛡️ Vaisperia Admin</div>
+            <button id="adminLogoutBtn" class="btn-logout" title="Выйти" style="width: auto; padding: 6px 14px; border-radius: 12px; font-weight: 700;">Выйти ↩</button>
+        </header>
+
+        <!-- Counter Card -->
+        <div class="admin-card">
+            <div class="stat-counter">
+                <div class="counter-icon">👥</div>
+                <div class="counter-info">
+                    <h4>Всего зарегистрировано жителей</h4>
+                    <div class="count-val" id="totalUsersVal">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Registered Users Table -->
+        <div class="admin-card">
+            <h3 style="font-family: var(--font-title); font-size: 1.2rem; font-weight: 800; margin-bottom: 16px; color: var(--eco-forest);">Реестр авторизованных граждан</h3>
+            <div class="users-table-wrapper">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Никнейм</th>
+                            <th>Дата регистрации</th>
+                            <th>Биометрический статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">Загрузка данных...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const authOverlay = document.getElementById('admin-auth-overlay');
+            const adminLoginForm = document.getElementById('adminLoginForm');
+            const adminPassInput = document.getElementById('adminPass');
+            const adminAuthError = document.getElementById('adminAuthError');
+            const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+            const totalUsersVal = document.getElementById('totalUsersVal');
+            const usersTableBody = document.getElementById('usersTableBody');
+
+            function getAdminToken() {
+                return localStorage.getItem('vaisperia_admin_pass');
+            }
+
+            function loadAdminData() {
+                const token = getAdminToken();
+                if (!token) {
+                    authOverlay.style.display = 'flex';
+                    return;
+                }
+
+                fetch('/api/admin/users', {
+                    headers: { 'x-admin-password': token }
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error('Неверный пароль доступа.');
+                    return res.json();
+                })
+                .then(data => {
+                    authOverlay.style.display = 'none';
+                    totalUsersVal.textContent = data.totalUsers;
+
+                    if (data.users.length === 0) {
+                        usersTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">Нет зарегистрированных пользователей.</td></tr>';
+                        return;
+                    }
+
+                    usersTableBody.innerHTML = '';
+                    data.users.forEach(u => {
+                        const dateStr = new Date(u.created_at).toLocaleString('ru-RU');
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>#${u.id}</td>
+                            <td><strong>${u.username}</strong></td>
+                            <td>${dateStr}</td>
+                            <td><span class="badge-biometric">Уникален 🗸</span></td>
+                        `;
+                        usersTableBody.appendChild(tr);
+                    });
+                })
+                .catch(err => {
+                    localStorage.removeItem('vaisperia_admin_pass');
+                    adminAuthError.textContent = err.message || 'Ошибка авторизации.';
+                    adminAuthError.style.display = 'block';
+                    authOverlay.style.display = 'flex';
+                });
+            }
+
+            adminLoginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                adminAuthError.style.display = 'none';
+                const pass = adminPassInput.value.trim();
+                localStorage.setItem('vaisperia_admin_pass', pass);
+                loadAdminData();
+            });
+
+            adminLogoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('vaisperia_admin_pass');
+                location.reload();
+            });
+
+            loadAdminData();
+        });
+    </script>
+</body>
+</html>

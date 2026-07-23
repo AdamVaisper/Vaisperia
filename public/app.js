@@ -1,16 +1,26 @@
 document.addEventListener("DOMContentLoaded", () => {
 
     // -----------------------------------------------------
-    // 1. УПРАВЛЕНИЕ АВТОРИЗАЦИЕЙ И СЕССИЕЙ (isLoggedIn)
+    // 1. БИОМЕТРИЧЕСКАЯ АВТОРИЗАЦИЯ И СЕССИЯ (isAuth)
     // -----------------------------------------------------
     const loginScreen = document.getElementById('login-screen');
     const appScreen = document.getElementById('app-screen');
-    const loginForm = document.getElementById('loginForm');
     const logoutBtn = document.getElementById('logoutBtn');
 
+    // Biometric elements
+    const bioStep1 = document.getElementById('bio-step-1');
+    const bioStep2 = document.getElementById('bio-step-2');
+    const bioStep1Form = document.getElementById('bioStep1Form');
+    const btnBackToStep1 = document.getElementById('btnBackToStep1');
+    const btnSubmitBiometrics = document.getElementById('btnSubmitBiometrics');
+    const bioErrorMsg = document.getElementById('bio-error-msg');
+    const video = document.getElementById('bio-webcam-video');
+    let mediaStream = null;
+
     function checkAuth() {
-        const isLoggedIn = localStorage.getItem('vaisperia_isLoggedIn') === 'true';
+        const isLoggedIn = (localStorage.getItem('vaisperia_isLoggedIn') === 'true' || localStorage.getItem('isAuth') === 'true');
         if (isLoggedIn) {
+            stopWebcam();
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
             
@@ -36,21 +46,174 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
+    function showBioError(msg) {
+        if (bioErrorMsg) {
+            bioErrorMsg.textContent = msg;
+            bioErrorMsg.style.display = 'block';
+        }
+    }
+
+    function hideBioError() {
+        if (bioErrorMsg) {
+            bioErrorMsg.style.display = 'none';
+        }
+    }
+
+    function startWebcam() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
+                .then(stream => {
+                    mediaStream = stream;
+                    if (video) video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.warn('Webcam stream unavailable:', err);
+                });
+        }
+    }
+
+    function stopWebcam() {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+            mediaStream = null;
+        }
+        if (video) {
+            video.srcObject = null;
+        }
+    }
+
+    // Вычисление 64-мерного нормализованного вектора лица
+    function captureFaceVector() {
+        const canvas = document.getElementById('bio-canvas');
+        if (!canvas) return [];
+        const ctx = canvas.getContext('2d');
+
+        if (video && video.readyState === 4) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        } else {
+            // Фолбэк симуляция кадра при отсутствии веб-камеры
+            ctx.fillStyle = '#10b981';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#059669';
+            ctx.beginPath();
+            ctx.arc(80, 60, 40, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        const vector = [];
+        const gridW = canvas.width / 8;
+        const gridH = canvas.height / 8;
+
+        for (let gy = 0; gy < 8; gy++) {
+            for (let gx = 0; gx < 8; gx++) {
+                let totalBright = 0;
+                let count = 0;
+                for (let y = Math.floor(gy * gridH); y < Math.floor((gy + 1) * gridH); y++) {
+                    for (let x = Math.floor(gx * gridW); x < Math.floor((gx + 1) * gridW); x++) {
+                        const idx = (y * canvas.width + x) * 4;
+                        const r = data[idx];
+                        const g = data[idx + 1];
+                        const b = data[idx + 2];
+                        const bright = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+                        totalBright += bright;
+                        count++;
+                    }
+                }
+                vector.push(parseFloat((totalBright / (count || 1)).toFixed(4)));
+            }
+        }
+
+        // Нормализация вектора
+        const magnitude = Math.sqrt(vector.reduce((acc, val) => acc + val * val, 0)) || 1;
+        return vector.map(val => parseFloat((val / magnitude).toFixed(4)));
+    }
+
+    // Шаг 1 -> Шаг 2
+    if (bioStep1Form) {
+        bioStep1Form.addEventListener('submit', (e) => {
             e.preventDefault();
+            hideBioError();
             const usernameInput = document.getElementById('username');
-            const username = usernameInput ? usernameInput.value.trim() : 'Muratbek_92';
-            
-            localStorage.setItem('vaisperia_isLoggedIn', 'true');
-            localStorage.setItem('vaisperia_username', username || 'Muratbek_92');
-            checkAuth();
+            const passwordInput = document.getElementById('password');
+
+            if (!usernameInput || !usernameInput.value.trim() || !passwordInput || !passwordInput.value) {
+                showBioError("Заполните никнейм и пароль.");
+                return;
+            }
+
+            bioStep1.classList.add('hidden');
+            bioStep2.classList.remove('hidden');
+            startWebcam();
+        });
+    }
+
+    // Назад на Шаг 1
+    if (btnBackToStep1) {
+        btnBackToStep1.addEventListener('click', () => {
+            hideBioError();
+            stopWebcam();
+            bioStep2.classList.add('hidden');
+            bioStep1.classList.remove('hidden');
+        });
+    }
+
+    // Сканирование биометрии и отправка на POST /api/register
+    if (btnSubmitBiometrics) {
+        btnSubmitBiometrics.addEventListener('click', async () => {
+            hideBioError();
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+
+            const username = usernameInput ? usernameInput.value.trim() : '';
+            const password = passwordInput ? passwordInput.value : '';
+
+            if (!username || !password) {
+                showBioError("Пожалуйста, заполните никнейм и пароль на Шаге 1.");
+                return;
+            }
+
+            btnSubmitBiometrics.disabled = true;
+            btnSubmitBiometrics.textContent = "Сканирование и проверка...";
+
+            const faceVector = captureFaceVector();
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, faceVector })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('vaisperia_isLoggedIn', 'true');
+                    localStorage.setItem('isAuth', 'true');
+                    localStorage.setItem('vaisperia_username', username);
+                    stopWebcam();
+                    btnSubmitBiometrics.disabled = false;
+                    btnSubmitBiometrics.textContent = "Пройти биометрию 🗸";
+                    checkAuth();
+                } else {
+                    showBioError(data.error || "Ошибка биометрической регистрации.");
+                    btnSubmitBiometrics.disabled = false;
+                    btnSubmitBiometrics.textContent = "Пройти биометрию 🗸";
+                }
+            } catch (err) {
+                console.error("Biometric registration error:", err);
+                showBioError("Ошибка соединения с сервером.");
+                btnSubmitBiometrics.disabled = false;
+                btnSubmitBiometrics.textContent = "Пройти биометрию 🗸";
+            }
         });
     }
 
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             localStorage.removeItem('vaisperia_isLoggedIn');
+            localStorage.removeItem('isAuth');
             checkAuth();
         });
     }

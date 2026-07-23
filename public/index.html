@@ -14,28 +14,49 @@
 </head>
 <body>
 
-    <!-- 1. Экран авторизации (Login Screen) -->
+    <!-- 1. Блокирующий экран биометрической регистрации (Biometric Modal Overlay) -->
     <div id="login-screen" class="login-wrapper">
-        <div class="login-card">
+        <div class="login-card" style="max-width: 420px;">
             <div class="login-logo">
-                <span class="logo-symbol">🌱</span>
+                <span class="logo-symbol">🧬</span>
                 <h2>Vaisperia</h2>
-                <p>Экологический контроль Нукуса</p>
+                <p id="bio-subtitle">Обязательный биометрический контроль гражданина</p>
             </div>
             
-            <form id="loginForm">
-                <div class="form-group-login">
-                    <label for="username">Логин</label>
-                    <input type="text" id="username" placeholder="Введите имя пользователя" value="Muratbek_92" required>
+            <div id="bio-error-msg" class="alert error" style="display:none; margin-bottom:16px;"></div>
+
+            <!-- Шаг 1: Никнейм и Пароль -->
+            <div id="bio-step-1">
+                <form id="bioStep1Form">
+                    <div class="form-group-login">
+                        <label for="username">Никнейм гражданина</label>
+                        <input type="text" id="username" placeholder="Введите ваш никнейм" value="Muratbek_92" required>
+                    </div>
+                    
+                    <div class="form-group-login">
+                        <label for="password">Пароль доступа</label>
+                        <input type="password" id="password" placeholder="••••••••" value="admin123" required>
+                    </div>
+                    
+                    <button type="submit" class="btn-login" id="btnGoToBioStep2">Далее: Сканирование лица ➔</button>
+                </form>
+            </div>
+
+            <!-- Шаг 2: Включение камеры и вычисление вектора -->
+            <div id="bio-step-2" class="hidden" style="text-align: center;">
+                <div class="webcam-box" style="position: relative; width: 100%; height: 220px; background: #000; border-radius: 16px; overflow: hidden; margin-bottom: 16px; border: 2px solid var(--eco-emerald);">
+                    <video id="bio-webcam-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <canvas id="bio-canvas" width="160" height="120" style="display:none;"></canvas>
+                    <div class="webcam-overlay-grid" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 2px dashed rgba(16, 185, 129, 0.6); border-radius: 50%; width: 140px; height: 140px; margin: auto; pointer-events: none;"></div>
                 </div>
-                
-                <div class="form-group-login">
-                    <label for="password">Пароль</label>
-                    <input type="password" id="password" placeholder="••••••••" value="admin123" required>
+
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">Разместите лицо по центру каучуковой рамки для уникальной биометрической идентификации.</p>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" class="btn-login" id="btnBackToStep1" style="background: #E2E8F0; color: var(--text-main); flex: 1;">↩ Назад</button>
+                    <button type="button" class="btn-login" id="btnSubmitBiometrics" style="flex: 2;">Пройти биометрию 🗸</button>
                 </div>
-                
-                <button type="submit" class="btn-login">Войти</button>
-            </form>
+            </div>
         </div>
     </div>
 

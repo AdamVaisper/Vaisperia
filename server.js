@@ -10,6 +10,8 @@ const port = 3000;
 
 // Middleware
 app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Configure Multer for image uploads (5MB Limit)
@@ -47,9 +49,115 @@ const db = new sqlite3.Database(dbPath, (err) => {
   else console.log('Connected to SQLite database');
 });
 
+// Ensure Users table exists
+db.serialize(() => {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      face_vector TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (err) console.error('Error creating users table', err);
+    else console.log('Users table ready');
+  });
+});
+
+// Helper: Calculate Euclidean Distance between 2 vectors
+function calculateEuclideanDistance(v1, v2) {
+  if (!v1 || !v2 || v1.length !== v2.length || v1.length === 0) return 999;
+  let sum = 0;
+  for (let i = 0; i < v1.length; i++) {
+    const diff = v1[i] - v2[i];
+    sum += diff * diff;
+  }
+  return Math.sqrt(sum);
+}
+
 // API Endpoints
 
-// 1. Get all problems
+// 1. Biometric User Registration
+app.post('/api/register', (req, res) => {
+  const { username, password, faceVector } = req.body;
+
+  if (!username || !password || !faceVector || !Array.isArray(faceVector)) {
+    return res.status(400).json({ error: 'Пожалуйста, заполните все поля и пройдите биометрию.' });
+  }
+
+  // Check biometric uniqueness against existing vectors in SQLite
+  db.all('SELECT id, username, face_vector FROM users', [], (err, existingUsers) => {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка проверки биометрии в базе данных.' });
+    }
+
+    // Check Euclidean distance threshold (< 0.25 indicates matching face biometrics)
+    for (const user of existingUsers) {
+      try {
+        const storedVector = JSON.parse(user.face_vector);
+        const distance = calculateEuclideanDistance(faceVector, storedVector);
+        if (distance < 0.25) {
+          return res.status(400).json({ 
+            error: `Пользователь с такой биометрией уже зарегистрирован!`
+          });
+        }
+      } catch (e) {
+        console.error('Error parsing stored face vector:', e);
+      }
+    }
+
+    // Insert unique user into DB
+    const stmt = db.prepare(`
+      INSERT INTO users (username, password, face_vector)
+      VALUES (?, ?, ?)
+    `);
+
+    const vectorStr = JSON.stringify(faceVector);
+    stmt.run([username.trim(), password, vectorStr], function(insertErr) {
+      if (insertErr) {
+        if (insertErr.message.includes('UNIQUE constraint failed')) {
+          return res.status(400).json({ error: 'Пользователь с таким именем уже существует!' });
+        }
+        return res.status(500).json({ error: insertErr.message });
+      }
+
+      res.status(201).json({ 
+        success: true, 
+        message: 'Регистрация и биометрический контроль успешно пройдены!',
+        userId: this.lastID,
+        username: username.trim()
+      });
+    });
+    stmt.finalize();
+  });
+});
+
+// 2. Protected Admin Endpoint: User list & statistics
+app.get('/api/admin/users', (req, res) => {
+  const adminPass = req.headers['x-admin-password'] || req.query.password;
+  if (adminPass !== 'admin123') {
+    return res.status(403).json({ error: 'Доступ запрещен. Неверный пароль администратора.' });
+  }
+
+  db.all('SELECT id, username, created_at FROM users ORDER BY created_at DESC', [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({
+      success: true,
+      totalUsers: rows.length,
+      users: rows
+    });
+  });
+});
+
+// 3. Serve Admin Panel Page
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// 4. Get all problems
 app.get('/api/problems', (req, res) => {
   db.all('SELECT * FROM problems ORDER BY timestamp DESC', [], (err, rows) => {
     if (err) {
@@ -60,22 +168,18 @@ app.get('/api/problems', (req, res) => {
   });
 });
 
-// 2. Report a new problem
-// multer upload.single('photo') handles the file upload and 5MB limit
+// 5. Report a new problem
 app.post('/api/problems', (req, res) => {
   upload.single('photo')(req, res, function (err) {
     if (err instanceof multer.MulterError) {
-      // A Multer error occurred when uploading (e.g. fileSize limit)
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'File size limit exceeded. Maximum allowed size is 5MB.' });
       }
       return res.status(400).json({ error: err.message });
     } else if (err) {
-      // An unknown error occurred
       return res.status(400).json({ error: err.message });
     }
 
-    // No error, proceed to insert into database
     const { description, latitude, longitude } = req.body;
     let photoUrl = null;
 
@@ -83,7 +187,6 @@ app.post('/api/problems', (req, res) => {
       photoUrl = '/uploads/' + req.file.filename;
     }
 
-    // Simple validation
     if (!description || !latitude || !longitude) {
        return res.status(400).json({ error: 'Description and location are required.' });
     }
