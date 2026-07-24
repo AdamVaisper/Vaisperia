@@ -630,11 +630,8 @@ document.addEventListener("DOMContentLoaded", () => {
             statsBtn.style.display = 'block';
         });
 
-        // Локальное управление состояниями
+        // Управление состояниями (с поддержкой статусов сервера)
         const getProblemState = (problem) => {
-            const saved = localStorage.getItem('problemState_' + problem.id);
-            if (saved) return JSON.parse(saved);
-            
             let timeMs = Date.now();
             if (problem.timestamp) {
                 let formatted = problem.timestamp;
@@ -647,10 +644,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
+            let resolvedAtMs = null;
+            if (problem.resolved_at) {
+                const parsedResolved = Date.parse(problem.resolved_at);
+                if (!isNaN(parsedResolved)) resolvedAtMs = parsedResolved;
+            }
+
+            const saved = localStorage.getItem('problemState_' + problem.id);
+            if (saved) {
+                try {
+                    const parsedSaved = JSON.parse(saved);
+                    const dbStatus = problem.status;
+                    if (dbStatus && dbStatus !== 'new') {
+                        parsedSaved.status = dbStatus;
+                        if (dbStatus === 'resolved' && !parsedSaved.resolvedAt) {
+                            parsedSaved.resolvedAt = resolvedAtMs || Date.now();
+                        }
+                    }
+                    return parsedSaved;
+                } catch (e) {}
+            }
+
             return {
-                status: 'new',
+                status: problem.status || 'new',
                 createdAt: timeMs,
-                resolvedAt: null
+                resolvedAt: resolvedAtMs
             };
         };
 

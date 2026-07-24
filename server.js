@@ -4,6 +4,7 @@ const multer  = require('multer');
 const path = require('path');
 const cors = require('cors');
 const fs = require('fs');
+const { sendReportToGroup, initTelegramBot } = require('./telegramBot');
 
 const app = express();
 const port = 3000;
@@ -72,6 +73,11 @@ db.serialize(() => {
       latitude REAL NOT NULL,
       longitude REAL NOT NULL,
       username TEXT,
+      category TEXT,
+      status TEXT DEFAULT 'new',
+      resolved_at DATETIME,
+      telegram_message_id INTEGER,
+      telegram_chat_id TEXT,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `, (err) => {
@@ -79,16 +85,22 @@ db.serialize(() => {
     else console.log('Problems table ready');
   });
 
-  // Migration: Add username column to problems if missing
-  db.run(`ALTER TABLE problems ADD COLUMN username TEXT`, (err) => {
-    // Column already exists or table freshly created
-  });
+  // Migrations: Add new metadata columns if missing
+  db.run(`ALTER TABLE problems ADD COLUMN username TEXT`, () => {});
+  db.run(`ALTER TABLE problems ADD COLUMN category TEXT`, () => {});
+  db.run(`ALTER TABLE problems ADD COLUMN status TEXT DEFAULT 'new'`, () => {});
+  db.run(`ALTER TABLE problems ADD COLUMN resolved_at DATETIME`, () => {});
+  db.run(`ALTER TABLE problems ADD COLUMN telegram_message_id INTEGER`, () => {});
+  db.run(`ALTER TABLE problems ADD COLUMN telegram_chat_id TEXT`, () => {});
 
   // Preserve history for Adam_Vaisper: associate all legacy/unassigned records to Adam_Vaisper
   db.run(`UPDATE problems SET username = 'Adam_Vaisper' WHERE username IS NULL OR username = '' OR username = 'Muratbek_92'`, (err) => {
     if (!err) console.log('Legacy problem records assigned to Adam_Vaisper');
   });
 });
+
+// Initialize Telegram Dispatcher Bot
+initTelegramBot(db);
 
 // Helper: Calculate Euclidean Distance between 2 vectors
 function calculateEuclideanDistance(v1, v2) {
@@ -205,7 +217,7 @@ app.post('/api/problems', (req, res) => {
       return res.status(400).json({ error: err.message });
     }
 
-    const { description, latitude, longitude, username } = req.body;
+    const { description, latitude, longitude, username, category } = req.body;
     let photoUrl = null;
 
     if (req.file) {
@@ -217,18 +229,36 @@ app.post('/api/problems', (req, res) => {
     }
 
     const submitter = (username && username.trim()) ? username.trim() : 'Adam_Vaisper';
+    const reportCategory = (category && category.trim()) ? category.trim() : 'Другое';
 
     const stmt = db.prepare(`
-      INSERT INTO problems (photo_url, description, latitude, longitude, username)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO problems (photo_url, description, latitude, longitude, username, category, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'new')
     `);
 
-    stmt.run([photoUrl, description, latitude, longitude, submitter], function(err) {
+    stmt.run([photoUrl, description, latitude, longitude, submitter, reportCategory], function(err) {
       if (err) {
          res.status(500).json({ error: err.message });
          return;
       }
-      res.status(201).json({ id: this.lastID, success: true });
+
+      const reportId = this.lastID;
+      const newReport = {
+        id: reportId,
+        photo_url: photoUrl,
+        description: description,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        username: submitter,
+        category: reportCategory,
+        status: 'new',
+        timestamp: new Date().toISOString()
+      };
+
+      // Dispatch notification asynchronously to Telegram Department Group
+      sendReportToGroup(newReport, db, path.join(__dirname, 'public'));
+
+      res.status(201).json({ id: reportId, success: true });
     });
     stmt.finalize();
   });
