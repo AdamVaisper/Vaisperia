@@ -687,6 +687,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         const allMarkersData = [];
+        let allDbProblemsData = [];
         let currentFilter = 'all';
 
         const updateHeatmap = () => {
@@ -714,7 +715,10 @@ document.addEventListener("DOMContentLoaded", () => {
              });
         };
 
-        const updateStatsUI = () => {
+        const updateStatsUI = (problemsList) => {
+            const list = (problemsList && Array.isArray(problemsList)) ? problemsList : allDbProblemsData;
+            if (!list || !Array.isArray(list)) return;
+
             const now = new Date();
             const currentMonth = now.getMonth();
             const currentYear = now.getFullYear();
@@ -726,19 +730,14 @@ document.addEventListener("DOMContentLoaded", () => {
             let resolvedWithDatesCount = 0;
             let areaGridCounts = {};
 
-            allMarkersData.forEach(item => {
-                const state = item.state;
+            list.forEach(problem => {
+                const state = getProblemState(problem);
                 const created = new Date(state.createdAt);
 
-                const latKey = item.problem.latitude.toFixed(2);
-                const lngKey = item.problem.longitude.toFixed(2);
+                const latKey = problem.latitude.toFixed(2);
+                const lngKey = problem.longitude.toFixed(2);
                 const gridKey = latKey + ',' + lngKey;
                 areaGridCounts[gridKey] = (areaGridCounts[gridKey] || 0) + 1;
-
-                if (state.status === 'resolved' && state.resolvedAt) {
-                    totalResolutionMs += (state.resolvedAt - state.createdAt);
-                    resolvedWithDatesCount++;
-                }
 
                 if (created.getFullYear() === currentYear) {
                     stats.yearNew++;
@@ -750,11 +749,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
 
-                if (state.status === 'in_progress') {
+                if (state.status === 'new' || state.status === 'in_progress') {
                     stats.currentInProgress++;
                 }
 
                 if (state.status === 'resolved' && state.resolvedAt) {
+                    totalResolutionMs += (state.resolvedAt - state.createdAt);
+                    resolvedWithDatesCount++;
+
                     const resolved = new Date(state.resolvedAt);
                     if (resolved.getFullYear() === currentYear) {
                         stats.yearResolved++;
@@ -769,18 +771,21 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             // Расчет строки среднего времени решения
-            if (resolvedWithDatesCount > 0) {
-                const avgMs = totalResolutionMs / resolvedWithDatesCount;
-                const avgHours = avgMs / (1000 * 60 * 60);
-                let avgStr = "";
-                if (avgHours < 24) {
-                    avgStr = Math.max(1, Math.round(avgHours)) + " ч.";
+            const avgEl = document.getElementById('stat-avg-res-time');
+            if (avgEl) {
+                if (resolvedWithDatesCount > 0) {
+                    const avgMs = totalResolutionMs / resolvedWithDatesCount;
+                    const avgHours = avgMs / (1000 * 60 * 60);
+                    let avgStr = "";
+                    if (avgHours < 24) {
+                        avgStr = Math.max(1, Math.round(avgHours)) + " ч.";
+                    } else {
+                        avgStr = Math.round(avgHours / 24) + " дн.";
+                    }
+                    avgEl.textContent = avgStr;
                 } else {
-                    avgStr = Math.round(avgHours / 24) + " дн.";
+                    avgEl.textContent = "N/A";
                 }
-                document.getElementById('stat-avg-res-time').textContent = avgStr;
-            } else {
-                document.getElementById('stat-avg-res-time').textContent = "N/A";
             }
 
             // Выявление зон большой скопленности
@@ -790,21 +795,32 @@ document.addEventListener("DOMContentLoaded", () => {
                     highestDensity = areaGridCounts[key];
                 }
             }
-            if (highestDensity >= 3) {
-                 document.getElementById('stat-high-density').textContent = "Множеств. очаги";
-            } else if (highestDensity > 0) {
-                 document.getElementById('stat-high-density').textContent = "Рассеянные случаи";
-            } else {
-                 document.getElementById('stat-high-density').textContent = "Нет данных";
+            const densityEl = document.getElementById('stat-high-density');
+            if (densityEl) {
+                if (highestDensity >= 3) {
+                     densityEl.textContent = "Множеств. очаги";
+                } else if (highestDensity > 0) {
+                     densityEl.textContent = "Рассеянные случаи";
+                } else {
+                     densityEl.textContent = "Нет данных";
+                }
             }
 
-            document.getElementById('stat-today-new').textContent = stats.todayNew;
-            document.getElementById('stat-today-res').textContent = stats.todayResolved;
-            document.getElementById('stat-curr-prog').textContent = stats.currentInProgress;
-            document.getElementById('stat-month-new').textContent = stats.monthNew;
-            document.getElementById('stat-month-res').textContent = stats.monthResolved;
-            document.getElementById('stat-year-new').textContent = stats.yearNew;
-            document.getElementById('stat-year-res').textContent = stats.yearResolved;
+            const elTodayNew = document.getElementById('stat-today-new');
+            const elTodayRes = document.getElementById('stat-today-res');
+            const elCurrProg = document.getElementById('stat-curr-prog');
+            const elMonthNew = document.getElementById('stat-month-new');
+            const elMonthRes = document.getElementById('stat-month-res');
+            const elYearNew = document.getElementById('stat-year-new');
+            const elYearRes = document.getElementById('stat-year-res');
+
+            if (elTodayNew) elTodayNew.textContent = stats.todayNew;
+            if (elTodayRes) elTodayRes.textContent = stats.todayResolved;
+            if (elCurrProg) elCurrProg.textContent = stats.currentInProgress;
+            if (elMonthNew) elMonthNew.textContent = stats.monthNew;
+            if (elMonthRes) elMonthRes.textContent = stats.monthResolved;
+            if (elYearNew) elYearNew.textContent = stats.yearNew;
+            if (elYearRes) elYearRes.textContent = stats.yearResolved;
         };
 
         const applyFilter = () => {
@@ -926,18 +942,22 @@ document.addEventListener("DOMContentLoaded", () => {
         // Глобальный триггер изменения статуса заявки
         window.markProblemResolved = (id) => {
             const item = allMarkersData.find(i => i.problem.id === id);
-            if (!item) return;
+            const problem = item ? item.problem : allDbProblemsData.find(p => p.id === id);
+            if (!problem) return;
 
-            item.state.status = 'resolved';
-            item.state.resolvedAt = Date.now();
-            saveProblemState(item.problem.id, item.state);
+            const state = getProblemState(problem);
+            state.status = 'resolved';
+            state.resolvedAt = Date.now();
+            saveProblemState(problem.id, state);
             
-            item.marker.setIcon(icons['resolved']);
-            updateStatsUI();
+            if (item) {
+                item.marker.setIcon(icons['resolved']);
+            }
+            updateStatsUI(allDbProblemsData);
             applyFilter();
             updateHeatmap();
             
-            openBottomSheet(item.problem, item.state);
+            openBottomSheet(problem, state);
             loadProfileHistory();
         };
 
@@ -952,6 +972,7 @@ document.addEventListener("DOMContentLoaded", () => {
             fetch('/api/problems')
                 .then(response => response.json())
                 .then(data => {
+                    allDbProblemsData = data;
                     const now = Date.now();
 
                     data.forEach(problem => {
@@ -987,7 +1008,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         allMarkersData.push({ problem, state, marker });
                     });
 
-                    updateStatsUI();
+                    updateStatsUI(allDbProblemsData);
                     updateHeatmap();
                     updateMonthProgress(data);
                 })
