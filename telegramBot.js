@@ -81,37 +81,31 @@ function buildMessageCaption(report, statusSuffix = '') {
   return text;
 }
 
+// Step-by-Step Inline Keyboard Generator
 function getInlineKeyboard(reportId, currentStatus = 'new') {
   if (currentStatus === 'resolved') {
-    return {
-      inline_keyboard: [
-        [
-          { text: '🟢 Решено (Закрыто)', callback_data: `noop` }
-        ]
-      ]
-    };
+    return { inline_keyboard: [] }; // Remove buttons on completion
   }
   if (currentStatus === 'in_progress') {
     return {
       inline_keyboard: [
         [
-          { text: '🟡 В работе (Принято)', callback_data: `noop` },
-          { text: '🟢 Решено', callback_data: `status_resolved_${reportId}` }
+          { text: '🟢 Решено', callback_data: `status_resolve_init_${reportId}` }
         ]
       ]
     };
   }
+  // Initial state ('new') -> Step A: Only ONE button
   return {
     inline_keyboard: [
       [
-        { text: '🟡 В работу', callback_data: `status_in_progress_${reportId}` },
-        { text: '🟢 Решено', callback_data: `status_resolved_${reportId}` }
+        { text: '🟡 В работу', callback_data: `status_in_progress_${reportId}` }
       ]
     ]
   };
 }
 
-// Low-level helper to make Telegram API requests using native Node.js https
+// Native HTTPS Telegram API Caller
 function callTelegramApi(method, payload) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(payload);
@@ -145,7 +139,7 @@ function callTelegramApi(method, payload) {
   });
 }
 
-// Helper to send photo via multipart/form-data if image exists locally
+// Helper to send photo via multipart/form-data
 function sendPhotoMultipart(chatId, filePath, caption, replyMarkup) {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(filePath)) {
@@ -157,22 +151,14 @@ function sendPhotoMultipart(chatId, filePath, caption, replyMarkup) {
     const fileData = fs.readFileSync(filePath);
 
     let postData = [];
-
-    // chat_id
     postData.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`));
-
-    // caption
     postData.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`));
-
-    // parse_mode
     postData.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="parse_mode"\r\n\r\nHTML\r\n`));
 
-    // reply_markup
     if (replyMarkup) {
       postData.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="reply_markup"\r\n\r\n${JSON.stringify(replyMarkup)}\r\n`));
     }
 
-    // photo file
     postData.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="${filename}"\r\nContent-Type: image/jpeg\r\n\r\n`));
     postData.push(fileData);
     postData.push(Buffer.from(`\r\n--${boundary}--\r\n`));
@@ -254,9 +240,14 @@ async function sendReportToGroup(report, db, publicDir) {
   }
 }
 
-// Long Polling for Telegram Callback Queries
+// Long Polling & Media Proof State Tracking
 let pollingOffset = 0;
 let dbInstance = null;
+
+// Track active report resolutions waiting for photo/video proof
+// Key: chatId, Value: { reportId, chatId, cardMsgId, promptMsgId, userTag }
+const pendingProofByChat = {};
+const pendingProofByReport = {};
 
 async function pollUpdates() {
   while (true) {
@@ -264,7 +255,7 @@ async function pollUpdates() {
       const res = await callTelegramApi('getUpdates', {
         offset: pollingOffset,
         timeout: 25,
-        allowed_updates: ['callback_query']
+        allowed_updates: ['callback_query', 'message']
       });
 
       if (res && res.ok && Array.isArray(res.result)) {
@@ -272,11 +263,12 @@ async function pollUpdates() {
           pollingOffset = update.update_id + 1;
           if (update.callback_query) {
             await handleCallbackQuery(update.callback_query);
+          } else if (update.message) {
+            await handleIncomingMessage(update.message);
           }
         }
       }
     } catch (err) {
-      // Pause briefly on network error before retrying
       await new Promise(resolve => setTimeout(resolve, 3000));
     }
   }
@@ -290,88 +282,183 @@ async function handleCallbackQuery(query) {
       return;
     }
 
-    let action = '';
-    let reportId = null;
+    const userTag = query.from.username ? `@${query.from.username}` : (query.from.first_name || 'Диспетчер');
+    const message = query.message;
 
     if (data.startsWith('status_in_progress_')) {
-      action = 'in_progress';
-      reportId = parseInt(data.replace('status_in_progress_', ''), 10);
-    } else if (data.startsWith('status_resolved_')) {
-      action = 'resolved';
-      reportId = parseInt(data.replace('status_resolved_', ''), 10);
-    }
+      const reportId = parseInt(data.replace('status_in_progress_', ''), 10);
+      if (!reportId || isNaN(reportId)) return;
 
-    if (!reportId || isNaN(reportId)) {
-      await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id });
-      return;
-    }
-
-    const userTag = query.from.username ? `@${query.from.username}` : (query.from.first_name || 'Диспетчер');
-
-    if (!dbInstance) {
-      await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Ошибка системы: база данных не подключена.' });
-      return;
-    }
-
-    dbInstance.get('SELECT * FROM problems WHERE id = ?', [reportId], async (err, problem) => {
-      if (err || !problem) {
-        await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Заявка не найдена в базе.' });
-        return;
-      }
-
-      let newStatus = problem.status || 'new';
-      let statusSuffix = '';
-      let nowMs = Date.now();
-
-      if (action === 'in_progress') {
-        newStatus = 'in_progress';
-        statusSuffix = `<b>Статус:</b> 🟡 В работе (Принял: ${userTag})`;
-        dbInstance.run('UPDATE problems SET status = ? WHERE id = ?', ['in_progress', reportId]);
-      } else if (action === 'resolved') {
-        newStatus = 'resolved';
-        statusSuffix = `<b>Статус:</b> 🟢 Решено (Закрыл: ${userTag})`;
-        dbInstance.run('UPDATE problems SET status = ?, resolved_at = ? WHERE id = ?', ['resolved', new Date(nowMs).toISOString(), reportId]);
-      }
-
-      // Update problem object in-memory for formatting
-      problem.status = newStatus;
-      problem.resolved_at = nowMs;
-
-      const updatedCaption = buildMessageCaption(problem, statusSuffix);
-      const updatedKeyboard = getInlineKeyboard(reportId, newStatus);
-      const message = query.message;
-
-      if (message) {
-        const isPhotoMsg = Boolean(message.photo || message.caption);
-        if (isPhotoMsg) {
-          await callTelegramApi('editMessageCaption', {
-            chat_id: message.chat.id,
-            message_id: message.message_id,
-            caption: updatedCaption,
-            parse_mode: 'HTML',
-            reply_markup: updatedKeyboard
-          });
-        } else {
-          await callTelegramApi('editMessageText', {
-            chat_id: message.chat.id,
-            message_id: message.message_id,
-            text: updatedCaption,
-            parse_mode: 'HTML',
-            reply_markup: updatedKeyboard
-          });
+      dbInstance.get('SELECT * FROM problems WHERE id = ?', [reportId], async (err, problem) => {
+        if (err || !problem) {
+          await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Заявка не найдена.' });
+          return;
         }
-      }
 
-      await callTelegramApi('answerCallbackQuery', {
-        callback_query_id: query.id,
-        text: action === 'in_progress' ? 'Заявка переведена "В работу" 🟡' : 'Заявка отмечена "Решено" 🟢'
+        dbInstance.run('UPDATE problems SET status = ? WHERE id = ?', ['in_progress', reportId]);
+        problem.status = 'in_progress';
+
+        const updatedCaption = buildMessageCaption(problem, `<b>Статус:</b> 🟡 В работе (Взял: ${userTag})`);
+        const updatedKeyboard = getInlineKeyboard(reportId, 'in_progress');
+
+        if (message) {
+          const isPhotoMsg = Boolean(message.photo || message.caption);
+          if (isPhotoMsg) {
+            await callTelegramApi('editMessageCaption', {
+              chat_id: message.chat.id,
+              message_id: message.message_id,
+              caption: updatedCaption,
+              parse_mode: 'HTML',
+              reply_markup: updatedKeyboard
+            });
+          } else {
+            await callTelegramApi('editMessageText', {
+              chat_id: message.chat.id,
+              message_id: message.message_id,
+              text: updatedCaption,
+              parse_mode: 'HTML',
+              reply_markup: updatedKeyboard
+            });
+          }
+        }
+
+        await callTelegramApi('answerCallbackQuery', {
+          callback_query_id: query.id,
+          text: 'Заявка принята в работу 🟡'
+        });
       });
-    });
+    } else if (data.startsWith('status_resolve_init_')) {
+      const reportId = parseInt(data.replace('status_resolve_init_', ''), 10);
+      if (!reportId || isNaN(reportId)) return;
+
+      dbInstance.get('SELECT * FROM problems WHERE id = ?', [reportId], async (err, problem) => {
+        if (err || !problem) {
+          await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Заявка не найдена.' });
+          return;
+        }
+
+        if (problem.status === 'resolved') {
+          await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Заявка уже завершена.' });
+          return;
+        }
+
+        const chatId = message.chat.id;
+        const cardMsgId = message.message_id;
+
+        // Prompt user to reply with photo or video proof
+        const promptRes = await callTelegramApi('sendMessage', {
+          chat_id: chatId,
+          text: `⚠️ <b>Пожалуйста, отправьте видео или фото выполненной работы в ответ на это сообщение (Reply) для подтверждения закрытия заявки #${reportId}.</b>`,
+          parse_mode: 'HTML',
+          reply_to_message_id: cardMsgId
+        });
+
+        const promptMsgId = (promptRes && promptRes.ok && promptRes.result) ? promptRes.result.message_id : null;
+
+        const proofEntry = {
+          reportId: reportId,
+          chatId: chatId,
+          cardMsgId: cardMsgId,
+          promptMsgId: promptMsgId,
+          userTag: userTag,
+          createdAt: Date.now()
+        };
+
+        pendingProofByChat[chatId] = proofEntry;
+        pendingProofByReport[reportId] = proofEntry;
+
+        await callTelegramApi('answerCallbackQuery', {
+          callback_query_id: query.id,
+          text: 'Отправьте фото/видео ответа (Reply) на сообщение для подтверждения!'
+        });
+      });
+    }
   } catch (err) {
     console.error('Error handling callback query:', err);
     try {
-      await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Произошла ошибка при обработке.' });
+      await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Произошла ошибка.' });
     } catch(e) {}
+  }
+}
+
+// Handle Incoming Media Messages (Photo / Video Proof)
+async function handleIncomingMessage(msg) {
+  try {
+    const chatId = msg.chat.id;
+    const hasMedia = Boolean(msg.photo || msg.video || msg.document);
+
+    if (!hasMedia) return;
+
+    // Check if message is a reply to prompt message or card
+    let pendingEntry = pendingProofByChat[chatId];
+    if (!pendingEntry) return;
+
+    const replyMsg = msg.reply_to_message;
+    if (replyMsg) {
+      const isReplyToPrompt = pendingEntry.promptMsgId && (replyMsg.message_id === pendingEntry.promptMsgId);
+      const isReplyToCard = pendingEntry.cardMsgId && (replyMsg.message_id === pendingEntry.cardMsgId);
+      if (!isReplyToPrompt && !isReplyToCard) {
+        // If reply target doesn't match active pending report, ignore or fallback
+        return;
+      }
+    }
+
+    const { reportId, cardMsgId, userTag } = pendingEntry;
+    const nowIso = new Date().toISOString();
+
+    if (!dbInstance) return;
+
+    dbInstance.run('UPDATE problems SET status = ?, resolved_at = ? WHERE id = ?', ['resolved', nowIso, reportId], function(err) {
+      if (err) console.error('Error setting problem status to resolved:', err);
+
+      dbInstance.get('SELECT * FROM problems WHERE id = ?', [reportId], async (err, problem) => {
+        if (!problem) return;
+
+        problem.status = 'resolved';
+        problem.resolved_at = Date.now();
+
+        const updatedCaption = buildMessageCaption(problem, `<b>Статус:</b> 🟢 Решено (Закрыл: ${userTag} с доказательством)`);
+        const updatedKeyboard = getInlineKeyboard(reportId, 'resolved'); // empty keyboard
+
+        // Edit original report card message
+        try {
+          const isPhotoCard = Boolean(problem.photo_url);
+          if (isPhotoCard) {
+            await callTelegramApi('editMessageCaption', {
+              chat_id: chatId,
+              message_id: cardMsgId,
+              caption: updatedCaption,
+              parse_mode: 'HTML',
+              reply_markup: updatedKeyboard
+            });
+          } else {
+            await callTelegramApi('editMessageText', {
+              chat_id: chatId,
+              message_id: cardMsgId,
+              text: updatedCaption,
+              parse_mode: 'HTML',
+              reply_markup: updatedKeyboard
+            });
+          }
+        } catch (e) {
+          console.error('Error updating original card message:', e);
+        }
+
+        // Send confirmation in chat
+        await callTelegramApi('sendMessage', {
+          chat_id: chatId,
+          text: `✅ <b>Заявка #${reportId} успешно закрыта с медиа-подтверждением!</b>`,
+          parse_mode: 'HTML',
+          reply_to_message_id: msg.message_id
+        });
+
+        // Clean up pending entry
+        delete pendingProofByChat[chatId];
+        delete pendingProofByReport[reportId];
+      });
+    });
+  } catch (err) {
+    console.error('Error processing media proof message:', err);
   }
 }
 

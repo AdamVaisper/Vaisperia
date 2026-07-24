@@ -979,52 +979,95 @@ document.addEventListener("DOMContentLoaded", () => {
             loadProfileHistory();
         };
 
-        // Запрос всех заявок и построение меток
-        function fetchProblemsAndDraw() {
-            // Очищаем старые метки с карты
-            allMarkersData.forEach(item => {
-                map.removeLayer(item.marker);
-            });
-            allMarkersData.length = 0;
-
+        // Запрос всех заявок и построение/обновление меток
+        function fetchProblemsAndDraw(isPolling = false) {
             fetch('/api/problems')
                 .then(response => response.json())
                 .then(data => {
                     allDbProblemsData = data;
                     const now = Date.now();
 
-                    data.forEach(problem => {
-                        let state = getProblemState(problem);
-                        let stateChanged = false;
-
-                        // Правило жизненного цикла: переход в работу на след. календарные сутки
-                        if (state.status === 'new' && isNextCalendarDay(state.createdAt, now)) {
-                            state.status = 'in_progress';
-                            stateChanged = true;
-                        }
-
-                        // Скрытие старых закрытых заявок на след. день
-                        if (state.status === 'resolved' && state.resolvedAt && isNextCalendarDay(state.resolvedAt, now)) {
-                            return; 
-                        }
-
-                        if (stateChanged) {
-                            saveProblemState(problem.id, state);
-                        }
-
-                        const marker = L.marker([problem.latitude, problem.longitude], {
-                            icon: icons[state.status]
+                    if (!isPolling) {
+                        // Полный перерендер (первоначальная загрузка или добавление новой заявки)
+                        allMarkersData.forEach(item => {
+                            map.removeLayer(item.marker);
                         });
+                        allMarkersData.length = 0;
 
-                        marker.on('click', (e) => {
-                            if (e && e.originalEvent) e.originalEvent.stopPropagation();
-                            map.panTo([problem.latitude, problem.longitude], { animate: true });
-                            openBottomSheet(problem, state);
+                        data.forEach(problem => {
+                            let state = getProblemState(problem);
+                            let stateChanged = false;
+
+                            // Переход в работу на след. календарные сутки
+                            if (state.status === 'new' && isNextCalendarDay(state.createdAt, now)) {
+                                state.status = 'in_progress';
+                                stateChanged = true;
+                            }
+
+                            // Скрытие старых закрытых заявок на след. день
+                            if (state.status === 'resolved' && state.resolvedAt && isNextCalendarDay(state.resolvedAt, now)) {
+                                return; 
+                            }
+
+                            if (stateChanged) {
+                                saveProblemState(problem.id, state);
+                            }
+
+                            const marker = L.marker([problem.latitude, problem.longitude], {
+                                icon: icons[state.status] || icons['new']
+                            });
+
+                            marker.on('click', (e) => {
+                                if (e && e.originalEvent) e.originalEvent.stopPropagation();
+                                map.panTo([problem.latitude, problem.longitude], { animate: true });
+                                openBottomSheet(problem, state);
+                            });
+                            marker.addTo(map);
+
+                            allMarkersData.push({ problem, state, marker });
                         });
-                        marker.addTo(map);
+                    } else {
+                        // Бесшовное авто-обновление маркеров каждые 5 сек без перезагрузки и мигания
+                        data.forEach(problem => {
+                            let state = getProblemState(problem);
 
-                        allMarkersData.push({ problem, state, marker });
-                    });
+                            // Скрытие закрытых заявок прошедших дней
+                            if (state.status === 'resolved' && state.resolvedAt && isNextCalendarDay(state.resolvedAt, now)) {
+                                const idx = allMarkersData.findIndex(item => item.problem.id === problem.id);
+                                if (idx !== -1) {
+                                    map.removeLayer(allMarkersData[idx].marker);
+                                    allMarkersData.splice(idx, 1);
+                                }
+                                return;
+                            }
+
+                            const existingItem = allMarkersData.find(item => item.problem.id === problem.id);
+                            if (existingItem) {
+                                // Если статус изменился из Telegram (в работу/решено), бесшовно меняем иконку
+                                if (existingItem.state.status !== state.status) {
+                                    existingItem.state.status = state.status;
+                                    existingItem.state.resolvedAt = state.resolvedAt;
+                                    if (icons[state.status]) {
+                                        existingItem.marker.setIcon(icons[state.status]);
+                                    }
+                                }
+                            } else {
+                                // Новая метка, созданная параллельно
+                                const marker = L.marker([problem.latitude, problem.longitude], {
+                                    icon: icons[state.status] || icons['new']
+                                });
+
+                                marker.on('click', (e) => {
+                                    if (e && e.originalEvent) e.originalEvent.stopPropagation();
+                                    map.panTo([problem.latitude, problem.longitude], { animate: true });
+                                    openBottomSheet(problem, state);
+                                });
+                                marker.addTo(map);
+
+                                allMarkersData.push({ problem, state, marker });
+                            }
+                        });
+                    }
 
                     updateStatsUI(allDbProblemsData);
                     updateHeatmap();
@@ -1034,7 +1077,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         fetchProblemsAndDraw();
-        window.fetchProblemsAndDraw = fetchProblemsAndDraw; // Оставляем для триггера обновления
+        window.fetchProblemsAndDraw = fetchProblemsAndDraw;
+
+        // Живой авто-опрос сервера каждые 5 секунд для обновления статусов диспетчера
+        setInterval(() => {
+            fetchProblemsAndDraw(true);
+        }, 5000);
     }
 
 
