@@ -767,38 +767,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const statsPanel = document.createElement('div');
         statsPanel.id = 'stats-panel';
-        statsPanel.innerHTML = `
-            <div class="stats-header">
-                <h3>${window.t ? window.t('stat_city_title', 'Статистика города') : 'Статистика города'}</h3>
-                <button type="button" id="stats-close">&times;</button>
-            </div>
-            <div class="stats-body">
-                <div class="stat-block">
-                    <div class="stat-title">🚨 Итоги работы</div>
-                    <div class="stat-row"><span>Среднее время решения</span><span class="stat-number" id="stat-avg-res-time">N/A</span></div>
-                    <div class="stat-row"><span>Покрытие зон</span><span class="stat-number" id="stat-high-density" style="font-size: 0.8rem">Анализ...</span></div>
-                </div>
-                <div class="stat-block">
-                    <div class="stat-title">📅 За сегодня</div>
-                    <div class="stat-row"><span><span class="color-dot red"></span>Новые заявки</span><span class="stat-number" id="stat-today-new">0</span></div>
-                    <div class="stat-row"><span><span class="color-dot green"></span>Решенные</span><span class="stat-number" id="stat-today-res">0</span></div>
-                </div>
-                <div class="stat-block">
-                    <div class="stat-title">📊 В работе</div>
-                    <div class="stat-row"><span><span class="color-dot yellow"></span>Количество</span><span class="stat-number" id="stat-curr-prog">0</span></div>
-                </div>
-                <div class="stat-block">
-                    <div class="stat-title">📆 За месяц</div>
-                    <div class="stat-row"><span>Новые за месяц</span><span class="stat-number" id="stat-month-new">0</span></div>
-                    <div class="stat-row"><span>Решенные</span><span class="stat-number" id="stat-month-res">0</span></div>
-                </div>
-                <div class="stat-block">
-                    <div class="stat-title">📈 За год</div>
-                    <div class="stat-row"><span>Новые за год</span><span class="stat-number" id="stat-year-new">0</span></div>
-                    <div class="stat-row"><span>Решенные</span><span class="stat-number" id="stat-year-res">0</span></div>
-                </div>
-            </div>
-        `;
         mapElement.appendChild(statsPanel);
 
         // Фильтры карты
@@ -825,21 +793,70 @@ document.addEventListener("DOMContentLoaded", () => {
             if (btnNew) btnNew.textContent = window.t ? window.t('map_filter_new', 'Новые') : 'Новые';
             if (btnProg) btnProg.textContent = window.t ? window.t('map_filter_in_progress', 'В работе') : 'В работе';
             if (btnRes) btnRes.textContent = window.t ? window.t('map_filter_resolved', 'Решенные') : 'Решенные';
+
+            const currentAvgTime = document.getElementById('stat-avg-res-time') ? document.getElementById('stat-avg-res-time').textContent : 'N/A';
+            const currentDensity = document.getElementById('stat-high-density') ? document.getElementById('stat-high-density').textContent : (window.t ? window.t('stat_analysis', 'Анализ...') : 'Анализ...');
+            const currentTodayNew = document.getElementById('stat-today-new') ? document.getElementById('stat-today-new').textContent : '0';
+            const currentTodayRes = document.getElementById('stat-today-res') ? document.getElementById('stat-today-res').textContent : '0';
+            const currentCurrProg = document.getElementById('stat-curr-prog') ? document.getElementById('stat-curr-prog').textContent : '0';
+            const currentMonthNew = document.getElementById('stat-month-new') ? document.getElementById('stat-month-new').textContent : '0';
+            const currentMonthRes = document.getElementById('stat-month-res') ? document.getElementById('stat-month-res').textContent : '0';
+            const currentYearNew = document.getElementById('stat-year-new') ? document.getElementById('stat-year-new').textContent : '0';
+            const currentYearRes = document.getElementById('stat-year-res') ? document.getElementById('stat-year-res').textContent : '0';
+
+            statsPanel.innerHTML = `
+                <div class="stats-header">
+                    <h3>${window.t ? window.t('stat_city_title', 'Статистика города') : 'Статистика города'}</h3>
+                    <button type="button" id="stats-close">&times;</button>
+                </div>
+                <div class="stats-body">
+                    <div class="stat-block">
+                        <div class="stat-title">${window.t ? window.t('stat_work_summary', '🚨 Итоги работы') : '🚨 Итоги работы'}</div>
+                        <div class="stat-row"><span>${window.t ? window.t('stat_avg_res_time_label', 'Среднее время решения') : 'Среднее время решения'}</span><span class="stat-number" id="stat-avg-res-time">${currentAvgTime}</span></div>
+                        <div class="stat-row"><span>${window.t ? window.t('stat_coverage_zones', 'Покрытие зон') : 'Покрытие зон'}</span><span class="stat-number" id="stat-high-density" style="font-size: 0.8rem">${currentDensity}</span></div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="stat-title">${window.t ? window.t('stat_today', '📅 За сегодня') : '📅 За сегодня'}</div>
+                        <div class="stat-row"><span><span class="color-dot red"></span>${window.t ? window.t('stat_new_reports', 'Новые заявки') : 'Новые заявки'}</span><span class="stat-number" id="stat-today-new">${currentTodayNew}</span></div>
+                        <div class="stat-row"><span><span class="color-dot green"></span>${window.t ? window.t('stat_resolved_reports', 'Решенные') : 'Решенные'}</span><span class="stat-number" id="stat-today-res">${currentTodayRes}</span></div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="stat-title">${window.t ? window.t('stat_in_progress_title', '📊 В работе') : '📊 В работе'}</div>
+                        <div class="stat-row"><span><span class="color-dot yellow"></span>${window.t ? window.t('stat_count', 'Количество') : 'Количество'}</span><span class="stat-number" id="stat-curr-prog">${currentCurrProg}</span></div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="stat-title">${window.t ? window.t('stat_this_month', '📆 За месяц') : '📆 За месяц'}</div>
+                        <div class="stat-row"><span>${window.t ? window.t('stat_month_new_reports', 'Новые за месяц') : 'Новые за месяц'}</span><span class="stat-number" id="stat-month-new">${currentMonthNew}</span></div>
+                        <div class="stat-row"><span>${window.t ? window.t('stat_resolved_reports', 'Решенные') : 'Решенные'}</span><span class="stat-number" id="stat-month-res">${currentMonthRes}</span></div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="stat-title">${window.t ? window.t('stat_this_year', '📈 За год') : '📈 За год'}</div>
+                        <div class="stat-row"><span>${window.t ? window.t('stat_year_new_reports', 'Новые за год') : 'Новые за год'}</span><span class="stat-number" id="stat-year-new">${currentYearNew}</span></div>
+                        <div class="stat-row"><span>${window.t ? window.t('stat_resolved_reports', 'Решенные') : 'Решенные'}</span><span class="stat-number" id="stat-year-res">${currentYearRes}</span></div>
+                    </div>
+                </div>
+            `;
+
+            const statsClose = document.getElementById('stats-close');
+            if (statsClose) {
+                statsClose.onclick = (e) => {
+                    if (e) e.stopPropagation();
+                    statsPanel.style.display = 'none';
+                    statsBtn.style.display = 'block';
+                };
+            }
         }
         window.updateMapUIElements = updateMapUIElements;
+        updateMapUIElements();
+
         L.DomEvent.disableClickPropagation(filtersContainer);
         L.DomEvent.disableClickPropagation(statsPanel);
 
         statsBtn.addEventListener('click', (e) => {
             if (e) e.stopPropagation();
+            updateMapUIElements();
             statsPanel.style.display = 'flex';
             statsBtn.style.display = 'none';
-        });
-
-        document.getElementById('stats-close').addEventListener('click', (e) => {
-            if (e) e.stopPropagation();
-            statsPanel.style.display = 'none';
-            statsBtn.style.display = 'block';
         });
 
         // Управление состояниями (с поддержкой статусов сервера)
@@ -1423,26 +1440,38 @@ document.addEventListener("DOMContentLoaded", () => {
         const emergencyCategories = {
             'Газ': {
                 phone: '104',
+                catKey: 'cat_gas',
+                translationKey: 'cat_gas_warn',
                 text: '⚠️ Возможна угроза жизни. Если вы чувствуете запах газа: покиньте помещение, не включайте свет, позвоните в 104.'
             },
             'Пожар': {
                 phone: '101',
+                catKey: 'cat_fire',
+                translationKey: 'cat_fire_warn',
                 text: '⚠️ Если существует открытое пламя — сначала вызовите пожарную службу (101). Не тратьте время на заполнение формы.'
             },
             'Электричество': {
                 phone: '112',
+                catKey: 'cat_electricity',
+                translationKey: 'cat_elec_warn',
                 text: '⚠️ Опасность поражения током! При повреждении линий электропередач или искрении держитесь на расстоянии и вызовите аварийную службу (1054 или 112).'
             },
             'Вода': {
                 phone: '112',
+                catKey: 'cat_water',
+                translationKey: 'cat_water_warn',
                 text: '⚠️ Прорыв магистрального водопровода или затопление. Срочно свяжитесь с аварийной службой водоканала (1055 или 112).'
             },
             'Дорожная авария': {
                 phone: '102',
+                catKey: 'cat_accident',
+                translationKey: 'cat_accident_warn',
                 text: '⚠️ Опасность на дороге! При наличии пострадавших немедленно вызовите скорую помощь (103) и ГАИ (102).'
             },
             'Опасные вещества': {
                 phone: '112',
+                catKey: 'cat_hazard',
+                translationKey: 'cat_hazard_warn',
                 text: '⚠️ Угроза химического заражения или отравления! Покиньте опасную зону и немедленно вызовите службу МЧС (112).'
             }
         };
@@ -1455,8 +1484,9 @@ document.addEventListener("DOMContentLoaded", () => {
             
             if (modal && titleEl && textEl && callBtn) {
                 const titleText = window.t ? window.t('safety_title', 'Экстренное предупреждение') : 'Экстренное предупреждение';
-                titleEl.textContent = `⚠️ ${titleText}: ${category}`;
-                textEl.textContent = info.text;
+                const catName = info.catKey ? (window.t ? window.t(info.catKey, category) : category) : category;
+                titleEl.textContent = `⚠️ ${titleText}: ${catName}`;
+                textEl.textContent = info.translationKey ? (window.t ? window.t(info.translationKey, info.text) : info.text) : info.text;
                 callBtn.setAttribute('href', `tel:${info.phone}`);
                 const callBtnTemplate = window.t ? window.t('btn_emergency_call_num', '📞 Позвонить в аварийную службу ({num})') : '📞 Позвонить в аварийную службу ({num})';
                 callBtn.textContent = callBtnTemplate.replace('{num}', info.phone);
