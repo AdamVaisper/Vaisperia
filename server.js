@@ -228,11 +228,23 @@ app.get('/api/problems', (req, res) => {
       res.status(500).json({ error: err.message });
       return;
     }
-    res.json(rows);
+    // Enforce strict anonymity override on API output (never leak real name or custom avatar)
+    const sanitizedRows = (rows || []).map(prob => {
+      if (prob.is_anonymous == 1 || prob.username === 'Анонимный гражданин' || prob.username === 'Гость') {
+        return {
+          ...prob,
+          username: 'Анонимный гражданин',
+          user_avatar: '',
+          is_anonymous: 1
+        };
+      }
+      return prob;
+    });
+    res.json(sanitizedRows);
   });
 });
 
-// 5. Report a new problem
+// 5. Report a new problem (Strictly CREATE / INSERT new record with unique ID)
 app.post('/api/problems', (req, res) => {
   upload.single('photo')(req, res, function (err) {
     if (err instanceof multer.MulterError) {
@@ -255,12 +267,13 @@ app.post('/api/problems', (req, res) => {
        return res.status(400).json({ error: 'Description and location are required.' });
     }
 
-    const isAnon = (isAnonymous === 'true' || isAnonymous === true);
-    const realUser = (username && username.trim()) ? username.trim() : 'Adam_Vaisper';
-    const displayUser = (isAnon || realUser === 'Гость') ? 'Анонимный гражданин' : realUser;
+    const isAnon = (isAnonymous === 'true' || isAnonymous === true || isAnonymous === 1 || isAnonymous === '1' || username === 'Анонимный гражданин' || username === 'Гость');
+    const realUser = (username && username.trim() && username.trim() !== 'Анонимный гражданин' && username.trim() !== 'Гость') ? username.trim() : 'Adam_Vaisper';
+    const displayUser = isAnon ? 'Анонимный гражданин' : realUser;
     const reportCategory = (category && category.trim()) ? category.trim() : 'Другое';
     const avatarData = isAnon ? '' : (userAvatar || '');
 
+    // ALWAYS INSERT A BRAND NEW RECORD WITH UNIQUE ID (NO UPSERT / NO UPDATE BY COORDINATES)
     const stmt = db.prepare(`
       INSERT INTO problems (photo_url, description, latitude, longitude, username, category, status, is_anonymous, user_id_name, user_avatar)
       VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?, ?)
@@ -283,6 +296,7 @@ app.post('/api/problems', (req, res) => {
         category: reportCategory,
         status: 'new',
         user_avatar: avatarData,
+        is_anonymous: isAnon ? 1 : 0,
         timestamp: new Date().toISOString()
       };
 

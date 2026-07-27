@@ -1488,14 +1488,19 @@ document.addEventListener("DOMContentLoaded", () => {
             const isAnonChecked = isLoggedIn && anonCheckbox && anonCheckbox.checked;
 
             if (isLoggedIn) {
-                formData.append('username', currentUsername);
-                formData.append('userAvatar', getUserAvatar(currentUsername));
                 if (isAnonChecked) {
-                    formData.append('isAnonymous', 'true');
+                    formData.set('username', 'Анонимный гражданин');
+                    formData.set('userAvatar', '');
+                    formData.set('isAnonymous', 'true');
+                } else {
+                    formData.set('username', currentUsername);
+                    formData.set('userAvatar', getUserAvatar(currentUsername));
+                    formData.set('isAnonymous', 'false');
                 }
             } else {
-                formData.append('username', 'Гость');
-                formData.append('isAnonymous', 'true');
+                formData.set('username', 'Гость');
+                formData.set('userAvatar', '');
+                formData.set('isAnonymous', 'true');
             }
 
             try {
