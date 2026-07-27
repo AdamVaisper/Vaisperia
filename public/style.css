@@ -652,13 +652,15 @@ body {
 .category-tiles-container {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-@media(max-width: 360px) {
+@media(max-width: 380px) {
   .category-tiles-container {
-    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
   }
 }
 
@@ -666,7 +668,7 @@ body {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
   border-radius: 12px;
-  padding: 10px 4px;
+  padding: 8px 2px;
   text-align: center;
   cursor: pointer;
   transition: var(--transition-smooth);
@@ -676,8 +678,11 @@ body {
   justify-content: center;
   gap: 4px;
   box-shadow: var(--shadow-sm);
-  min-height: 64px;
+  min-height: 60px;
+  min-width: 0;
+  width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .category-tile:hover {
@@ -692,13 +697,14 @@ body {
 }
 
 .category-icon {
-  font-size: 1.4rem;
-  width: 28px;
-  height: 28px;
+  font-size: 1.3rem;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .category-icon img,
@@ -709,7 +715,7 @@ body {
 }
 
 .category-label {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: var(--text-main);
   text-align: center;
@@ -717,6 +723,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  display: block;
 }
 
 .report-form-wrapper {

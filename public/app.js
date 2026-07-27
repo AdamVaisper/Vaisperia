@@ -1039,11 +1039,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const densityEl = document.getElementById('stat-high-density');
             if (densityEl) {
                 if (highestDensity >= 3) {
-                     densityEl.textContent = "Множеств. очаги";
+                     densityEl.textContent = window.t ? (window.t('multiple_hotspots') || window.t('stat_high_density_clusters') || "Множеств. очаги") : "Множеств. очаги";
                 } else if (highestDensity > 0) {
-                     densityEl.textContent = "Рассеянные случаи";
+                     densityEl.textContent = window.t ? window.t('stat_scattered_cases', 'Рассеянные случаи') : "Рассеянные случаи";
                 } else {
-                     densityEl.textContent = "Нет данных";
+                     densityEl.textContent = window.t ? window.t('stat_no_data', 'Нет данных') : "Нет данных";
                 }
             }
 
@@ -1104,10 +1104,11 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
             if (isAnon) {
+                const anonText = window.t ? (window.t('author_anonymous') || window.t('anonymous_citizen') || 'Анонимный гражданин') : 'Анонимный гражданин';
                 return `
                     <div class="sheet-author-badge anon">
                         <span class="author-icon">👤</span>
-                        <span class="author-name">Анонимный гражданин</span>
+                        <span class="author-name">${anonText}</span>
                     </div>
                 `;
             }
@@ -1534,7 +1535,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (photoInput.files.length > 0) {
                     photoLabel.textContent = photoInput.files[0].name;
                 } else {
-                    photoLabel.textContent = "Сделать снимок на месте";
+                    photoLabel.textContent = window.t ? (window.t('take_photo_onsite') || window.t('photo_dummy') || "Сделать снимок на месте") : "Сделать снимок на месте";
                 }
             });
         }
@@ -1572,13 +1573,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (savedLat && savedLng) {
                 latInput.value = parseFloat(savedLat).toFixed(6);
                 lngInput.value = parseFloat(savedLng).toFixed(6);
-                locStatus.textContent = "Координаты загружены с карты ✓";
+                locStatus.textContent = window.t ? window.t('loc_from_map', 'Координаты загружены с карты ✓') : 'Координаты загружены с карты ✓';
                 locStatus.style.color = "green";
                 submitBtn.disabled = false;
                 localStorage.removeItem('selectedLat');
                 localStorage.removeItem('selectedLng');
             } else {
-                locStatus.textContent = "Укажите координаты на карте или введите вручную.";
+                locStatus.textContent = window.t ? window.t('loc_denied', 'Укажите координаты на карте или введите вручную.') : 'Укажите координаты на карте или введите вручную.';
                 locStatus.style.color = "var(--text-muted)";
                 submitBtn.disabled = false;
             }
@@ -1599,7 +1600,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Клиентская валидация размера файла (5 МБ)
             if (file && file.size > 5 * 1024 * 1024) {
-                showMessage("Размер файла не должен превышать 5 МБ.", "error");
+                showMessage(window.t ? window.t('err_file_size', 'Размер файла не должен превышать 5 МБ.') : 'Размер файла не должен превышать 5 МБ.', "error");
                 return;
             }
 
@@ -1610,9 +1611,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const anonCheckbox = document.getElementById('is-anonymous-checkbox');
             const isAnonChecked = isLoggedIn && anonCheckbox && anonCheckbox.checked;
 
+            const anonNameStr = window.t ? (window.t('author_anonymous') || window.t('anonymous_citizen') || 'Анонимный гражданин') : 'Анонимный гражданин';
+
             if (isLoggedIn) {
                 if (isAnonChecked) {
-                    formData.set('username', 'Анонимный гражданин');
+                    formData.set('username', anonNameStr);
                     formData.set('userAvatar', '');
                     formData.set('isAnonymous', 'true');
                 } else {
@@ -1628,7 +1631,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             try {
                 submitBtn.disabled = true;
-                submitBtn.textContent = "Отправка...";
+                submitBtn.textContent = window.t ? (window.t('submitting') || window.t('btn_submitting') || 'Отправка...') : 'Отправка...';
 
                 const response = await fetch('/api/problems', {
                     method: 'POST',
@@ -1644,7 +1647,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         let coinsToAdd = 0;
                         
                         if (daily >= 100) {
-                            showMessage("Отчет успешно создан! Вы превысили дневной лимит в 100 баллов, новые коины не начислены.", "success");
+                            showMessage(window.t ? window.t('msg_limit_exceeded', 'Отчет успешно создан! Вы превысили дневной лимит в 100 баллов, новые коины не начислены.') : 'Отчет успешно создан! Вы превысили дневной лимит в 100 баллов, новые коины не начислены.', "success");
                         } else {
                             const descText = document.getElementById('description').value.trim();
                             if (descText.length >= 30) {
@@ -1661,20 +1664,21 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (coinsToAdd > 0) {
                                 addCoins(coinsToAdd);
                                 addDailyPoints(coinsToAdd);
-                                showMessage(`Отчет успешно создан! Начислено +${coinsToAdd} эко-коинов 🍃`, "success");
+                                const msgTemplate = window.t ? window.t('msg_report_success_coins', 'Отчет успешно создан! Начислено +{coins} эко-коинов 🍃') : 'Отчет успешно создан! Начислено +{coins} эко-коинов 🍃';
+                                showMessage(msgTemplate.replace('{coins}', coinsToAdd), "success");
                             } else {
-                                showMessage("Отчет успешно создан!", "success");
+                                showMessage(window.t ? window.t('msg_report_created', 'Отчет успешно создан!') : 'Отчет успешно создан!', "success");
                             }
                         }
                     } else {
-                        showMessage("Отчет успешно создан анонимно! (В гостевом режиме баллы и профиль не сохраняются).", "success");
+                        showMessage(window.t ? window.t('msg_report_guest_created', 'Отчет успешно создан анонимно! (В гостевом режиме баллы и профиль не сохраняются).') : 'Отчет успешно создан анонимно! (В гостевом режиме баллы и профиль не сохраняются).', "success");
                     }
 
                     // Очистка формы
                     reportForm.reset();
                     if (anonCheckbox) anonCheckbox.checked = false;
                     if (photoLabel) {
-                        photoLabel.textContent = "Сделать снимок на месте";
+                        photoLabel.textContent = window.t ? (window.t('take_photo_onsite') || window.t('photo_dummy') || "Сделать снимок на месте") : "Сделать снимок на месте";
                     }
                     if (categoryTiles && categoryInput) {
                         categoryTiles.forEach(t => t.classList.remove('selected'));
@@ -1692,7 +1696,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     setTimeout(() => {
                         messageBox.style.display = "none";
                         submitBtn.disabled = false;
-                        submitBtn.textContent = "Отправить отчет";
+                        submitBtn.textContent = window.t ? (window.t('submit_report') || window.t('btn_submit_report') || "Отправить отчет") : "Отправить отчет";
                         
                         const mapTab = document.querySelector('.nav-tab[data-tab="map"]');
                         if (mapTab) {
@@ -1703,14 +1707,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else {
                     showMessage(data.error || "Неизвестная ошибка сервера.", "error");
                     submitBtn.disabled = false;
-                    submitBtn.textContent = "Отправить отчет";
+                    submitBtn.textContent = window.t ? (window.t('submit_report') || window.t('btn_submit_report') || "Отправить отчет") : "Отправить отчет";
                 }
 
             } catch (error) {
                 console.error("Submission error:", error);
-                showMessage("Сетевой сбой при отправке формы. Попробуйте еще раз.", "error");
+                showMessage(window.t ? window.t('err_network_submit', 'Сетевой сбой при отправке формы. Попробуйте еще раз.') : 'Сетевой сбой при отправке формы. Попробуйте еще раз.', "error");
                 submitBtn.disabled = false;
-                submitBtn.textContent = "Отправить отчет";
+                submitBtn.textContent = window.t ? (window.t('submit_report') || window.t('btn_submit_report') || "Отправить отчет") : "Отправить отчет";
             }
         });
 
@@ -2237,6 +2241,15 @@ document.addEventListener("DOMContentLoaded", () => {
             loadProfileHistory();
             if (window.updateMapUIElements) {
                 window.updateMapUIElements();
+            }
+            const pInput = document.getElementById('photo');
+            const pLabel = document.getElementById('photo-selected-name');
+            const sBtn = document.getElementById('submitBtn');
+            if (pInput && pLabel && pInput.files.length === 0) {
+                pLabel.textContent = window.t ? (window.t('take_photo_onsite') || window.t('photo_dummy') || "Сделать снимок на месте") : "Сделать снимок на месте";
+            }
+            if (sBtn && !sBtn.disabled) {
+                sBtn.textContent = window.t ? (window.t('submit_report') || window.t('btn_submit_report') || "Отправить отчет") : "Отправить отчет";
             }
         });
     }
