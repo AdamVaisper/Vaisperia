@@ -342,28 +342,6 @@
                             <div class="history-placeholder">Загрузка истории обращений...</div>
                         </div>
                     </div>
-
-                    <!-- Настройки аккаунта -->
-                    <div class="settings-section" style="margin-top: 20px;">
-                        <h3>Настройки аккаунта</h3>
-                        <div class="settings-card" style="margin-bottom: 12px;">
-                            <div class="settings-info">
-                                <span class="settings-title">Авто-геолокация</span>
-                                <span class="settings-desc">Автоматически определять координаты при открытии отчета</span>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="auto-geo-toggle" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="settings-card">
-                            <div class="settings-info">
-                                <span class="settings-title">Текущая сессия</span>
-                                <span class="settings-desc">Завершить работу в Vaisperia</span>
-                            </div>
-                            <button type="button" id="profileLogoutBtn" class="btn-logout-profile">Выйти из аккаунта ↩</button>
-                        </div>
-                    </div>
                 </div>
             </section>
 
@@ -435,6 +413,13 @@
             <h3 id="safety-modal-title">Экстренное предупреждение</h3>
             <p id="safety-modal-text" class="safety-modal-text">Предупреждение...</p>
             
+            <div class="safety-modal-actions">
+                <a id="safety-emergency-call-btn" href="tel:112" type="button" class="btn-emergency-call">
+                    📞 Позвонить в аварийную службу
+                </a>
+                <button type="button" id="safety-continue-btn" class="btn-safety-continue">
+                    Продолжить
+                </button>
             </div>
         </div>
     </div>
