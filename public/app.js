@@ -1434,10 +1434,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const callBtn = document.getElementById('safety-emergency-call-btn');
             
             if (modal && titleEl && textEl && callBtn) {
-                titleEl.textContent = `⚠️ Предупреждение: ${category}`;
+                const titleText = window.t ? window.t('safety_title', 'Экстренное предупреждение') : 'Экстренное предупреждение';
+                titleEl.textContent = `⚠️ ${titleText}: ${category}`;
                 textEl.textContent = info.text;
                 callBtn.setAttribute('href', `tel:${info.phone}`);
-                callBtn.textContent = `📞 Позвонить в аварийную службу (${info.phone})`;
+                const callBtnTemplate = window.t ? window.t('btn_emergency_call_num', '📞 Позвонить в аварийную службу ({num})') : '📞 Позвонить в аварийную службу ({num})';
+                callBtn.textContent = callBtnTemplate.replace('{num}', info.phone);
                 modal.classList.remove('hidden');
             }
         }
@@ -1674,9 +1676,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // 6. МАГАЗИН ЭКО-НАГРАД (Rewards shop logic)
     // -----------------------------------------------------
     const rewardProducts = [
-        { id: 1, name: "Купон: Скидка 10%", price: 100, description: "Скидка 10% на любые чеки до 50 000 сум у партнеров.", emoji: "🎟️" },
-        { id: 2, name: "Купон: Скидка 25%", price: 400, description: "Скидка 25% на любые чеки до 50 000 сум у партнеров.", emoji: "🎁" },
-        { id: 3, name: "Купон: Скидка 50%", price: 1000, description: "Скидка 50% на любые чеки до 50 000 сум у партнеров.", emoji: "🔥" }
+        { id: 1, nameKey: "coupon_10", descKey: "coupon_10_desc", defaultName: "Купон: Скидка 10%", price: 100, defaultDesc: "Скидка 10% на любые чеки до 50 000 сум у партнеров.", emoji: "🎟️" },
+        { id: 2, nameKey: "coupon_25", descKey: "coupon_25_desc", defaultName: "Купон: Скидка 25%", price: 400, defaultDesc: "Скидка 25% на любые чеки до 50 000 сум у партнеров.", emoji: "🎁" },
+        { id: 3, nameKey: "coupon_50", descKey: "coupon_50_desc", defaultName: "Купон: Скидка 50%", price: 1000, defaultDesc: "Скидка 50% на любые чеки до 50 000 сум у партнеров.", emoji: "🔥" }
     ];
 
     function renderShopItems() {
@@ -1691,15 +1693,21 @@ document.addEventListener("DOMContentLoaded", () => {
             const itemCard = document.createElement('div');
             itemCard.className = `shop-item-card ${isAffordable ? '' : 'disabled'}`;
             
+            const prodName = window.t ? window.t(prod.nameKey, prod.defaultName) : prod.defaultName;
+            const prodDesc = window.t ? window.t(prod.descKey, prod.defaultDesc) : prod.defaultDesc;
+            const btnText = isAffordable 
+                ? (window.t ? window.t('btn_get_reward', 'Получить') : 'Получить')
+                : (window.t ? window.t('btn_not_enough_coins', 'Мало баллов') : 'Мало баллов');
+
             itemCard.innerHTML = `
                 <div class="shop-item-icon">${prod.emoji}</div>
                 <div class="shop-item-info">
-                    <h4>${prod.name}</h4>
-                    <p class="shop-item-desc">${prod.description}</p>
+                    <h4>${prodName}</h4>
+                    <p class="shop-item-desc">${prodDesc}</p>
                     <div class="shop-item-footer">
                         <span class="shop-price">${prod.price} 🍃</span>
                         <button type="button" class="btn-buy-reward" data-id="${prod.id}" ${isAffordable ? '' : 'disabled'}>
-                            ${isAffordable ? 'Получить' : 'Мало баллов'}
+                            ${btnText}
                         </button>
                     </div>
                 </div>
@@ -1721,7 +1729,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function purchaseReward(product) {
         const balance = getCoins();
         if (balance < product.price) {
-            alert("Недостаточно баллов на балансе!");
+            alert(window.t ? window.t('err_not_enough_coins', 'Недостаточно баллов на балансе!') : 'Недостаточно баллов на балансе!');
             return;
         }
         
@@ -1736,7 +1744,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const modalCode = document.getElementById('qr-coupon-code');
         
         if (modal && modalName && modalCode) {
-            modalName.textContent = product.name;
+            const prodName = window.t ? window.t(product.nameKey, product.defaultName) : product.defaultName;
+            modalName.textContent = prodName;
             const randCode = "VS-" + Math.floor(1000 + Math.random() * 9000) + "-" + Math.floor(1000 + Math.random() * 9000);
             modalCode.textContent = randCode;
             modal.classList.remove('hidden');
@@ -1758,9 +1767,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // 7. ПРОФИЛЬ: УВЕДОМЛЕНИЯ И АЧИВКИ (Achievements & Timeline stats)
     // -----------------------------------------------------
     const achievementsList = [
-        { key: "first_step", title: "Первый росток", desc: "Успешно отправлен первый отчет", icon: "🌱", req: 1 },
-        { key: "patrol", title: "Защитник Нукуса", desc: "Зарегистрировано более 3 отчетов", icon: "🛡️", req: 3 },
-        { key: "hero", title: "Зеленый герой", desc: "Зарегистрировано более 5 отчетов", icon: "👑", req: 5 }
+        { key: "first_step", titleKey: "ach_first_step_title", descKey: "ach_first_step_desc", defaultTitle: "Первый росток", defaultDesc: "Успешно отправлен первый отчет", icon: "🌱", req: 1 },
+        { key: "patrol", titleKey: "ach_patrol_title", descKey: "ach_patrol_desc", defaultTitle: "Защитник Нукуса", defaultDesc: "Зарегистрировано более 3 отчетов", icon: "🛡️", req: 3 },
+        { key: "hero", titleKey: "ach_hero_title", descKey: "ach_hero_desc", defaultTitle: "Зеленый герой", defaultDesc: "Зарегистрировано более 5 отчетов", icon: "👑", req: 5 }
     ];
 
     function updateAchievements(reportsCount = 0) {
@@ -1774,11 +1783,14 @@ document.addEventListener("DOMContentLoaded", () => {
             const card = document.createElement('div');
             card.className = `achievement-card ${isUnlocked ? 'unlocked' : 'locked'}`;
             
+            const achTitle = window.t ? window.t(ach.titleKey, ach.defaultTitle) : ach.defaultTitle;
+            const achDesc = window.t ? window.t(ach.descKey, ach.defaultDesc) : ach.defaultDesc;
+
             card.innerHTML = `
                 <div class="ach-icon">${isUnlocked ? ach.icon : '🔒'}</div>
                 <div class="ach-text">
-                    <h5>${ach.title}</h5>
-                    <p>${ach.desc}</p>
+                    <h5>${achTitle}</h5>
+                    <p>${achDesc}</p>
                 </div>
             `;
             container.appendChild(card);
@@ -1802,7 +1814,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (levelVal) levelVal.textContent = 1;
             if (xpVal) xpVal.textContent = 0;
             if (xpFill) xpFill.style.width = '0%';
-            listContainer.innerHTML = `<div class="history-placeholder">Вы вошли как Гость. Зарегистрируйтесь, чтобы копить баллы и видеть историю!</div>`;
+            const guestMsg = window.t ? window.t('history_guest_placeholder', 'Вы вошли как Гость. Зарегистрируйтесь, чтобы копить баллы и видеть историю!') : 'Вы вошли как Гость. Зарегистрируйтесь, чтобы копить баллы и видеть историю!';
+            listContainer.innerHTML = `<div class="history-placeholder">${guestMsg}</div>`;
             return;
         }
 
@@ -1836,7 +1849,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 updateMonthProgress(userProblems);
 
                 if (userProblems.length === 0) {
-                    listContainer.innerHTML = `<div class="history-placeholder">Вы пока не отправляли заявок. Вкладка "Карта" ждет вас!</div>`;
+                    const emptyMsg = window.t ? window.t('history_empty_placeholder', 'Вы пока не отправляли заявок. Вкладка "Карта" ждет вас!') : 'Вы пока не отправляли заявок. Вкладка "Карта" ждет вас!';
+                    listContainer.innerHTML = `<div class="history-placeholder">${emptyMsg}</div>`;
                     return;
                 }
 
@@ -1846,9 +1860,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     const state = typeof getProblemState === 'function' ? getProblemState(prob) : { status: 'new', createdAt: Date.now() };
                     const dateStr = formatDateTashkent(state.createdAt);
 
-                    let statusLabel = 'Новая';
-                    if (state.status === 'in_progress') statusLabel = 'В обработке';
-                    if (state.status === 'resolved') statusLabel = 'Решена';
+                    let statusLabel = window.t ? window.t('status_new', 'Новая') : 'Новая';
+                    if (state.status === 'in_progress') statusLabel = window.t ? window.t('status_in_progress', 'В обработке') : 'В обработке';
+                    if (state.status === 'resolved') statusLabel = window.t ? window.t('status_resolved', 'Решена') : 'Решена';
 
                     const item = document.createElement('div');
                     item.className = 'history-item';
@@ -2019,21 +2033,22 @@ document.addEventListener("DOMContentLoaded", () => {
             const username = getCurrentUsername();
             localStorage.setItem(`vaisperia_avatar_${username}`, result.dataUrl);
             updateProfileAvatarUI();
-            alert("Фото профиля успешно обновлено! 📸");
+            alert(window.t ? window.t('msg_avatar_updated', 'Фото профиля успешно обновлено! 📸') : 'Фото профиля успешно обновлено! 📸');
         });
     }
 
     // Clear Cache & History Handler
     if (btnClearCache) {
         btnClearCache.addEventListener('click', () => {
-            const confirmClear = confirm("Вы уверены, что хотите очистить локальную историю отчетов и кэш приложения?");
+            const confirmMsg = window.t ? window.t('confirm_clear_cache', 'Вы уверены, что хотите очистить локальную историю отчетов и кэш приложения?') : 'Вы уверены, что хотите очистить локальную историю отчетов и кэш приложения?';
+            const confirmClear = confirm(confirmMsg);
             if (confirmClear) {
                 for (let key in localStorage) {
                     if (key.startsWith('problemState_') || key.startsWith('vaisperia_dailyPoints_')) {
                         localStorage.removeItem(key);
                     }
                 }
-                alert("Кэш приложения и история обращений очищены!");
+                alert(window.t ? window.t('msg_cache_cleared', 'История и кэш приложения успешно очищены!') : 'История и кэш приложения успешно очищены!');
                 checkAuth();
             }
         });
