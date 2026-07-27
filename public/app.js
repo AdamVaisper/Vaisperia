@@ -18,15 +18,18 @@ document.addEventListener("DOMContentLoaded", () => {
     let mediaStream = null;
 
     const profileLogoutBtn = document.getElementById('profileLogoutBtn');
+    const btnGuestLogin = document.getElementById('btnGuestLogin');
 
     function checkAuth() {
         const isLoggedIn = (localStorage.getItem('vaisperia_isLoggedIn') === 'true' || localStorage.getItem('isAuth') === 'true');
-        if (isLoggedIn) {
+        const isGuest = (localStorage.getItem('vaisperia_isGuest') === 'true');
+
+        if (isLoggedIn || isGuest) {
             stopWebcam();
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
             
-            const username = localStorage.getItem('vaisperia_username') || 'Гражданин';
+            const username = isLoggedIn ? (localStorage.getItem('vaisperia_username') || 'Гражданин') : 'Гость';
             const homeUserEl = document.getElementById('home-username');
             const profileUserTag = document.getElementById('profile-username-tag');
             
@@ -36,6 +39,18 @@ document.addEventListener("DOMContentLoaded", () => {
             const avatarSpan = document.querySelector('.avatar-circle span');
             if (avatarSpan && username) {
                 avatarSpan.textContent = username.substring(0, 2).toUpperCase();
+            }
+
+            // Управление видимостью анонимного чекбокса (только для зарегистрированных)
+            const anonWrapper = document.getElementById('anonymous-option-wrapper');
+            if (anonWrapper) {
+                if (isLoggedIn) {
+                    anonWrapper.classList.remove('hidden');
+                } else {
+                    anonWrapper.classList.add('hidden');
+                    const anonCheckbox = document.getElementById('is-anonymous-checkbox');
+                    if (anonCheckbox) anonCheckbox.checked = false;
+                }
             }
             
             // Инициализация коинов
@@ -56,6 +71,16 @@ document.addEventListener("DOMContentLoaded", () => {
             if (bioStep2) bioStep2.classList.add('hidden');
             if (bioStep1) bioStep1.classList.remove('hidden');
         }
+    }
+
+    if (btnGuestLogin) {
+        btnGuestLogin.addEventListener('click', () => {
+            localStorage.removeItem('vaisperia_isLoggedIn');
+            localStorage.removeItem('isAuth');
+            localStorage.removeItem('vaisperia_username');
+            localStorage.setItem('vaisperia_isGuest', 'true');
+            checkAuth();
+        });
     }
 
     function showBioError(msg) {
@@ -224,6 +249,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     localStorage.setItem('vaisperia_isLoggedIn', 'true');
                     localStorage.setItem('isAuth', 'true');
                     localStorage.setItem('vaisperia_username', username);
+                    localStorage.removeItem('vaisperia_isGuest');
                     stopWebcam();
                     btnSubmitBiometrics.disabled = false;
                     btnSubmitBiometrics.textContent = "Пройти биометрию 🗸";
@@ -246,6 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.removeItem('vaisperia_isLoggedIn');
         localStorage.removeItem('isAuth');
         localStorage.removeItem('vaisperia_username');
+        localStorage.removeItem('vaisperia_isGuest');
         checkAuth();
     }
 
@@ -525,7 +552,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div style="text-align: center; padding: 4px;">
                     <div style="font-size: 0.8rem; font-weight: 700; margin-bottom: 4px; color: #1e293b;">📍 Выбранное место</div>
                     <div style="font-size: 0.72rem; color: #64748b; margin-bottom: 8px;">${parseFloat(lat).toFixed(5)}, ${parseFloat(lng).toFixed(5)}</div>
-                    <button onclick="event.stopPropagation(); window.confirmLocationSelect(${lat}, ${lng});" class="btn-resolve" style="background: #10b981; margin: 0; width: 100%;">Выбрать эту точку</button>
+                    <button type="button" onclick="event.stopPropagation(); window.confirmLocationSelect(${lat}, ${lng});" class="btn-resolve" style="background: #10b981; margin: 0; width: 100%;">Выбрать эту точку</button>
                 </div>
             `;
 
@@ -543,6 +570,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Кнопка статистики
         const statsBtn = document.createElement('button');
+        statsBtn.type = 'button';
         statsBtn.id = 'stats-btn';
         statsBtn.textContent = 'Статистика';
         mapElement.appendChild(statsBtn);
@@ -550,6 +578,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Кнопка тепловой карты
         const hotzonesBtn = document.createElement('button');
+        hotzonesBtn.type = 'button';
         hotzonesBtn.id = 'hotzones-btn';
         hotzonesBtn.textContent = '🔥 Зоны скопления';
         mapElement.appendChild(hotzonesBtn);
@@ -574,7 +603,7 @@ document.addEventListener("DOMContentLoaded", () => {
         statsPanel.innerHTML = `
             <div class="stats-header">
                 <h3>Статистика города</h3>
-                <button id="stats-close">&times;</button>
+                <button type="button" id="stats-close">&times;</button>
             </div>
             <div class="stats-body">
                 <div class="stat-block">
@@ -609,10 +638,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const filtersContainer = document.createElement('div');
         filtersContainer.id = 'map-filters';
         filtersContainer.innerHTML = `
-            <button class="filter-btn active" data-filter="all">Все</button>
-            <button class="filter-btn" data-filter="new">Новые</button>
-            <button class="filter-btn" data-filter="in_progress">В работе</button>
-            <button class="filter-btn" data-filter="resolved">Решенные</button>
+            <button type="button" class="filter-btn active" data-filter="all">Все</button>
+            <button type="button" class="filter-btn" data-filter="new">Новые</button>
+            <button type="button" class="filter-btn" data-filter="in_progress">В работе</button>
+            <button type="button" class="filter-btn" data-filter="resolved">Решенные</button>
         `;
         mapElement.appendChild(filtersContainer);
         L.DomEvent.disableClickPropagation(filtersContainer);
@@ -888,7 +917,7 @@ document.addEventListener("DOMContentLoaded", () => {
             html += `</div>`;
 
             if (state.status !== 'resolved') {
-                 html += `<button class="btn-resolve" onclick="markProblemResolved(${problem.id})">Отметить как решенную</button>`;
+                 html += `<button type="button" class="btn-resolve" onclick="markProblemResolved(${problem.id})">Отметить как решенную</button>`;
             }
             html += `</div>`;
             return html;
@@ -901,7 +930,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 sheet.id = 'report-bottom-sheet';
                 sheet.className = 'report-bottom-sheet hidden';
                 sheet.innerHTML = `
-                    <button class="bottom-sheet-close" id="bottomSheetCloseBtn">&times;</button>
+                    <button type="button" class="bottom-sheet-close" id="bottomSheetCloseBtn">&times;</button>
                     <div class="bottom-sheet-content" id="bottomSheetContent"></div>
                 `;
                 mapElement.appendChild(sheet);
@@ -939,7 +968,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (state.status !== 'resolved') {
-                html += `<button class="btn-resolve sheet-btn-resolve" onclick="markProblemResolved(${problem.id})">Отметить как решенную</button>`;
+                html += `<button type="button" class="btn-resolve sheet-btn-resolve" onclick="markProblemResolved(${problem.id})">Отметить как решенную</button>`;
             }
 
             html += `</div>`;
@@ -1100,6 +1129,64 @@ document.addEventListener("DOMContentLoaded", () => {
         const photoInput = document.getElementById('photo');
         const photoLabel = document.getElementById('photo-selected-name');
         
+        const emergencyCategories = {
+            'Газ': {
+                phone: '104',
+                text: '⚠️ Возможна угроза жизни. Если вы чувствуете запах газа: покиньте помещение, не включайте свет, позвоните в 104.'
+            },
+            'Пожар': {
+                phone: '101',
+                text: '⚠️ Если существует открытое пламя — сначала вызовите пожарную службу (101). Не тратьте время на заполнение формы.'
+            },
+            'Электричество': {
+                phone: '112',
+                text: '⚠️ Опасность поражения током! При повреждении линий электропередач или искрении держитесь на расстоянии и вызовите аварийную службу (1054 или 112).'
+            },
+            'Вода': {
+                phone: '112',
+                text: '⚠️ Прорыв магистрального водопровода или затопление. Срочно свяжитесь с аварийной службой водоканала (1055 или 112).'
+            },
+            'Дорожная авария': {
+                phone: '102',
+                text: '⚠️ Опасность на дороге! При наличии пострадавших немедленно вызовите скорую помощь (103) и ГАИ (102).'
+            },
+            'Опасные вещества': {
+                phone: '112',
+                text: '⚠️ Угроза химического заражения или отравления! Покиньте опасную зону и немедленно вызовите службу МЧС (112).'
+            }
+        };
+
+        function showSafetyModal(category, info) {
+            const modal = document.getElementById('safety-modal');
+            const titleEl = document.getElementById('safety-modal-title');
+            const textEl = document.getElementById('safety-modal-text');
+            const callBtn = document.getElementById('safety-emergency-call-btn');
+            
+            if (modal && titleEl && textEl && callBtn) {
+                titleEl.textContent = `⚠️ Предупреждение: ${category}`;
+                textEl.textContent = info.text;
+                callBtn.setAttribute('href', `tel:${info.phone}`);
+                callBtn.textContent = `📞 Позвонить в аварийную службу (${info.phone})`;
+                modal.classList.remove('hidden');
+            }
+        }
+
+        const safetyContinueBtn = document.getElementById('safety-continue-btn');
+        const safetyModal = document.getElementById('safety-modal');
+
+        if (safetyContinueBtn && safetyModal) {
+            safetyContinueBtn.addEventListener('click', () => {
+                safetyModal.classList.add('hidden');
+            });
+        }
+        if (safetyModal) {
+            safetyModal.addEventListener('click', (e) => {
+                if (e.target === safetyModal) {
+                    safetyModal.classList.add('hidden');
+                }
+            });
+        }
+
         // Плитки категорий события
         const categoryTiles = document.querySelectorAll('.category-tile');
         const categoryInput = document.getElementById('report-category');
@@ -1108,7 +1195,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 tile.addEventListener('click', () => {
                     categoryTiles.forEach(t => t.classList.remove('selected'));
                     tile.classList.add('selected');
-                    categoryInput.value = tile.dataset.value;
+                    const selectedVal = tile.dataset.value;
+                    categoryInput.value = selectedVal;
+                    
+                    if (emergencyCategories[selectedVal]) {
+                        showSafetyModal(selectedVal, emergencyCategories[selectedVal]);
+                    }
                 });
             });
         }
@@ -1180,7 +1272,21 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const formData = new FormData(reportForm);
-            formData.append('username', localStorage.getItem('vaisperia_username') || 'Adam_Vaisper');
+            const isLoggedIn = (localStorage.getItem('vaisperia_isLoggedIn') === 'true' || localStorage.getItem('isAuth') === 'true');
+            const currentUsername = localStorage.getItem('vaisperia_username') || 'Adam_Vaisper';
+            
+            const anonCheckbox = document.getElementById('is-anonymous-checkbox');
+            const isAnonChecked = isLoggedIn && anonCheckbox && anonCheckbox.checked;
+
+            if (isLoggedIn) {
+                formData.append('username', currentUsername);
+                if (isAnonChecked) {
+                    formData.append('isAnonymous', 'true');
+                }
+            } else {
+                formData.append('username', 'Гость');
+                formData.append('isAnonymous', 'true');
+            }
 
             try {
                 submitBtn.disabled = true;
@@ -1194,38 +1300,41 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = await response.json();
 
                 if (response.ok) {
-                    // НАЧИСЛЕНИЕ БАЛЛОВ (динамическое с дневным лимитом 100)
-                    const daily = getDailyPoints();
-                    let coinsToAdd = 0;
-                    
-                    if (daily >= 100) {
-                        showMessage("Отчет успешно создан! Вы превысили дневной лимит в 100 баллов, новые коины не начислены.", "success");
+                    // НАЧИСЛЕНИЕ БАЛЛОВ (только для зарегистрированных)
+                    if (isLoggedIn) {
+                        const daily = getDailyPoints();
+                        let coinsToAdd = 0;
+                        
+                        if (daily >= 100) {
+                            showMessage("Отчет успешно создан! Вы превысили дневной лимит в 100 баллов, новые коины не начислены.", "success");
+                        } else {
+                            const descText = document.getElementById('description').value.trim();
+                            if (descText.length >= 30) {
+                                coinsToAdd = 10;
+                            } else {
+                                coinsToAdd = 5;
+                            }
+                            
+                            const remaining = 100 - daily;
+                            if (coinsToAdd > remaining) {
+                                coinsToAdd = remaining;
+                            }
+                            
+                            if (coinsToAdd > 0) {
+                                addCoins(coinsToAdd);
+                                addDailyPoints(coinsToAdd);
+                                showMessage(`Отчет успешно создан! Начислено +${coinsToAdd} эко-коинов 🍃`, "success");
+                            } else {
+                                showMessage("Отчет успешно создан!", "success");
+                            }
+                        }
                     } else {
-                        const descText = document.getElementById('description').value.trim();
-                        // Точное заполнение: длина описания от 30 символов дает 10 коинов, иначе 5
-                        if (descText.length >= 30) {
-                            coinsToAdd = 10;
-                        } else {
-                            coinsToAdd = 5;
-                        }
-                        
-                        // Capping points at daily limit
-                        const remaining = 100 - daily;
-                        if (coinsToAdd > remaining) {
-                            coinsToAdd = remaining;
-                        }
-                        
-                        if (coinsToAdd > 0) {
-                            addCoins(coinsToAdd);
-                            addDailyPoints(coinsToAdd);
-                            showMessage(`Отчет успешно создан! Начислено +${coinsToAdd} эко-коинов 🍃`, "success");
-                        } else {
-                            showMessage("Отчет успешно создан!", "success");
-                        }
+                        showMessage("Отчет успешно создан анонимно! (В гостевом режиме баллы и профиль не сохраняются).", "success");
                     }
 
                     // Очистка формы
                     reportForm.reset();
+                    if (anonCheckbox) anonCheckbox.checked = false;
                     if (photoLabel) {
                         photoLabel.textContent = "Сделать снимок на месте";
                     }
@@ -1303,7 +1412,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <p class="shop-item-desc">${prod.description}</p>
                     <div class="shop-item-footer">
                         <span class="shop-price">${prod.price} 🍃</span>
-                        <button class="btn-buy-reward" data-id="${prod.id}" ${isAffordable ? '' : 'disabled'}>
+                        <button type="button" class="btn-buy-reward" data-id="${prod.id}" ${isAffordable ? '' : 'disabled'}>
                             ${isAffordable ? 'Получить' : 'Мало баллов'}
                         </button>
                     </div>
@@ -1395,13 +1504,27 @@ document.addEventListener("DOMContentLoaded", () => {
         const countBadge = document.getElementById('profile-reports-count');
         if (!listContainer) return;
 
+        const isGuest = (localStorage.getItem('vaisperia_isGuest') === 'true');
+        const currentUsername = localStorage.getItem('vaisperia_username') || '';
+
+        if (isGuest || !currentUsername) {
+            if (countBadge) countBadge.textContent = '0';
+            updateAchievements(0);
+            const levelVal = document.getElementById('profile-level-val');
+            const xpVal = document.getElementById('profile-xp-val');
+            const xpFill = document.getElementById('profile-xp-fill');
+            if (levelVal) levelVal.textContent = 1;
+            if (xpVal) xpVal.textContent = 0;
+            if (xpFill) xpFill.style.width = '0%';
+            listContainer.innerHTML = `<div class="history-placeholder">Вы вошли как Гость. Зарегистрируйтесь, чтобы копить баллы и видеть историю!</div>`;
+            return;
+        }
+
         fetch('/api/problems')
             .then(res => res.json())
             .then(data => {
-                const currentUsername = localStorage.getItem('vaisperia_username') || '';
-                
-                // Фильтруем ТОЛЬКО личные отчеты текущего пользователя для вкладки Профиль
-                const userProblems = data.filter(prob => prob.username === currentUsername);
+                // Фильтруем личные отчеты текущего пользователя (включая созданные анонимно)
+                const userProblems = data.filter(prob => prob.username === currentUsername || prob.user_id_name === currentUsername);
 
                 // Обновляем личный счетчик
                 if (countBadge) countBadge.textContent = userProblems.length;

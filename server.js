@@ -92,6 +92,8 @@ db.serialize(() => {
   db.run(`ALTER TABLE problems ADD COLUMN resolved_at DATETIME`, () => {});
   db.run(`ALTER TABLE problems ADD COLUMN telegram_message_id INTEGER`, () => {});
   db.run(`ALTER TABLE problems ADD COLUMN telegram_chat_id TEXT`, () => {});
+  db.run(`ALTER TABLE problems ADD COLUMN is_anonymous INTEGER DEFAULT 0`, () => {});
+  db.run(`ALTER TABLE problems ADD COLUMN user_id_name TEXT`, () => {});
 
   // Preserve history for Adam_Vaisper: associate all legacy/unassigned records to Adam_Vaisper
   db.run(`UPDATE problems SET username = 'Adam_Vaisper' WHERE username IS NULL OR username = '' OR username = 'Muratbek_92'`, (err) => {
@@ -217,7 +219,7 @@ app.post('/api/problems', (req, res) => {
       return res.status(400).json({ error: err.message });
     }
 
-    const { description, latitude, longitude, username, category } = req.body;
+    const { description, latitude, longitude, username, category, isAnonymous } = req.body;
     let photoUrl = null;
 
     if (req.file) {
@@ -228,15 +230,17 @@ app.post('/api/problems', (req, res) => {
        return res.status(400).json({ error: 'Description and location are required.' });
     }
 
-    const submitter = (username && username.trim()) ? username.trim() : 'Adam_Vaisper';
+    const isAnon = (isAnonymous === 'true' || isAnonymous === true);
+    const realUser = (username && username.trim()) ? username.trim() : 'Adam_Vaisper';
+    const displayUser = (isAnon || realUser === 'Гость') ? 'Анонимный гражданин' : realUser;
     const reportCategory = (category && category.trim()) ? category.trim() : 'Другое';
 
     const stmt = db.prepare(`
-      INSERT INTO problems (photo_url, description, latitude, longitude, username, category, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'new')
+      INSERT INTO problems (photo_url, description, latitude, longitude, username, category, status, is_anonymous, user_id_name)
+      VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?)
     `);
 
-    stmt.run([photoUrl, description, latitude, longitude, submitter, reportCategory], function(err) {
+    stmt.run([photoUrl, description, latitude, longitude, displayUser, reportCategory, isAnon ? 1 : 0, realUser], function(err) {
       if (err) {
          res.status(500).json({ error: err.message });
          return;
@@ -249,7 +253,7 @@ app.post('/api/problems', (req, res) => {
         description: description,
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),
-        username: submitter,
+        username: displayUser,
         category: reportCategory,
         status: 'new',
         timestamp: new Date().toISOString()

@@ -51,6 +51,11 @@
                     
                     <button type="submit" class="btn-login" id="btnGoToBioStep2">Далее: Сканирование лица ➔</button>
                 </form>
+                <div style="margin-top: 14px; text-align: center;">
+                    <button type="button" class="btn-guest" id="btnGuestLogin" style="width:100%; padding: 12px; background: transparent; border: 1.5px dashed var(--eco-emerald); color: var(--eco-forest); font-weight: 700; border-radius: 12px; cursor: pointer; transition: var(--transition-smooth);">
+                        👤 Продолжить как гость
+                    </button>
+                </div>
             </div>
 
             <!-- Шаг 2: Включение камеры и вычисление вектора -->
@@ -146,6 +151,12 @@
                 <div class="container report-form-wrapper">
                     <h2>Сообщить о городской проблеме</h2>
                     
+                    <!-- Обучающая строка UX Micro-hint -->
+                    <div class="ux-micro-hint">
+                        <span class="hint-icon">🟢</span>
+                        <span class="hint-text"><strong>Полезный совет:</strong> Чем точнее фотография и геолокация, тем быстрее организация сможет решить проблему.</span>
+                    </div>
+
                     <!-- Карточка прогресса за месяц -->
                     <div class="progress-card">
                         <div class="progress-header">
@@ -179,6 +190,22 @@
                                 <div class="category-tile" data-value="Электричество">
                                     <span class="category-icon">⚡</span>
                                     <span class="category-label">Элек-тво</span>
+                                </div>
+                                <div class="category-tile" data-value="Газ">
+                                    <span class="category-icon">🔥</span>
+                                    <span class="category-label">Газ</span>
+                                </div>
+                                <div class="category-tile" data-value="Пожар">
+                                    <span class="category-icon">🚨</span>
+                                    <span class="category-label">Пожар</span>
+                                </div>
+                                <div class="category-tile" data-value="Дорожная авария">
+                                    <span class="category-icon">💥</span>
+                                    <span class="category-label">ДТП</span>
+                                </div>
+                                <div class="category-tile" data-value="Опасные вещества">
+                                    <span class="category-icon">⚠️</span>
+                                    <span class="category-label">Опасн. в-ва</span>
                                 </div>
                                 <div class="category-tile" data-value="Мусор">
                                     <span class="category-icon">🗑️</span>
@@ -220,6 +247,17 @@
                             </div>
                             <small id="locationStatus">Загрузка геолокации...</small>
                             <small class="location-hint">Вы также можете установить маркер, просто кликнув по нужному месту на вкладке «Карта».</small>
+                        </div>
+
+                        <!-- Чекбокс анонимной публикации (Только для зарегистрированных) -->
+                        <div class="form-group hidden" id="anonymous-option-wrapper">
+                            <label class="checkbox-container" style="display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;">
+                                <input type="checkbox" id="is-anonymous-checkbox" name="isAnonymous" value="true" style="width: 18px; height: 18px; accent-color: var(--eco-emerald); cursor: pointer;">
+                                <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">🔒 Опубликовать анонимно</span>
+                            </label>
+                            <small style="display: block; color: var(--text-muted); font-size: 0.78rem; margin-top: 4px;">
+                                Ваше имя будет скрыто на карте ("Анонимный гражданин"), но баллы и XP зачислятся в ваш профиль.
+                            </small>
                         </div>
 
                         <button type="submit" class="btn-submit" id="submitBtn" disabled>Отправить отчет</button>
@@ -303,7 +341,7 @@
                                 <span class="settings-title">Текущая сессия</span>
                                 <span class="settings-desc">Завершить работу в Vaisperia</span>
                             </div>
-                            <button id="profileLogoutBtn" class="btn-logout-profile">Выйти из аккаунта ↩</button>
+                            <button type="button" id="profileLogoutBtn" class="btn-logout-profile">Выйти из аккаунта ↩</button>
                         </div>
                     </div>
                 </div>
@@ -313,23 +351,23 @@
 
         <!-- Fixed Bottom Navigation Bar -->
         <nav class="bottom-nav">
-            <button class="nav-tab active" data-tab="home">
+            <button type="button" class="nav-tab active" data-tab="home">
                 <span class="nav-icon">🏠</span>
                 <span class="nav-label">Главная</span>
             </button>
-            <button class="nav-tab" data-tab="map">
+            <button type="button" class="nav-tab" data-tab="map">
                 <span class="nav-icon">🗺️</span>
                 <span class="nav-label">Карта</span>
             </button>
-            <button class="nav-tab" data-tab="report">
+            <button type="button" class="nav-tab" data-tab="report">
                 <span class="nav-icon">➕</span>
                 <span class="nav-label">Добавить</span>
             </button>
-            <button class="nav-tab" data-tab="shop">
+            <button type="button" class="nav-tab" data-tab="shop">
                 <span class="nav-icon">🛍️</span>
                 <span class="nav-label">Магазин</span>
             </button>
-            <button class="nav-tab" data-tab="profile">
+            <button type="button" class="nav-tab" data-tab="profile">
                 <span class="nav-icon">👤</span>
                 <span class="nav-label">Профиль</span>
             </button>
@@ -366,7 +404,25 @@
             </div>
             
             <p class="qr-instruction">Покажите этот QR-код партнеру для выдачи и получения эко-подарка.</p>
-            <button class="btn-close-modal" id="closeQrModalBtn">Закрыть</button>
+            <button type="button" class="btn-close-modal" id="closeQrModalBtn">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- 3. Экстренное модальное окно при выборе опасных категорий (Safety Warning Modal) -->
+    <div id="safety-modal" class="modal-overlay hidden">
+        <div class="modal-card safety-modal-card">
+            <div class="safety-modal-icon">⚠️</div>
+            <h3 id="safety-modal-title">Экстренное предупреждение</h3>
+            <p id="safety-modal-text" class="safety-modal-text">Предупреждение...</p>
+            
+            <div class="safety-modal-actions">
+                <a id="safety-emergency-call-btn" href="tel:112" type="button" class="btn-emergency-call">
+                    📞 Позвонить в аварийную службу
+                </a>
+                <button type="button" id="safety-continue-btn" class="btn-safety-continue">
+                    Продолжить
+                </button>
+            </div>
         </div>
     </div>
 
