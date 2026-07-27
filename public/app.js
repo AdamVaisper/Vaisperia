@@ -55,9 +55,14 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Инициализация коинов
             initCoins();
+            // Инициализация авто-геолокации
+            initAutoGeoToggle();
             // Загрузка динамики
             loadProfileHistory();
             renderShopItems();
+            if (window.fetchProblemsAndDraw) {
+                window.fetchProblemsAndDraw();
+            }
             
             // Исправление отрисовки Leaflet при открытии
             if (map) {
@@ -384,6 +389,97 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 
+    function getAutoGeoKey() {
+        const user = getCurrentUsername() || 'guest';
+        return `vaisperia_auto_geo_${user}`;
+    }
+
+    function isAutoGeoEnabled() {
+        const val = localStorage.getItem(getAutoGeoKey());
+        return val === null ? true : (val === 'true');
+    }
+
+    function initAutoGeoToggle() {
+        const toggle = document.getElementById('auto-geo-toggle');
+        if (!toggle) return;
+        toggle.checked = isAutoGeoEnabled();
+        toggle.onchange = () => {
+            localStorage.setItem(getAutoGeoKey(), toggle.checked ? 'true' : 'false');
+        };
+    }
+
+    function requestLocationForReport(showModalOnFail = false) {
+        const latInput = document.getElementById('latitude');
+        const lngInput = document.getElementById('longitude');
+        const locStatus = document.getElementById('locationStatus');
+        const submitBtn = document.getElementById('submitBtn');
+
+        const savedLat = localStorage.getItem('selectedLat');
+        const savedLng = localStorage.getItem('selectedLng');
+
+        if (savedLat && savedLng) {
+            if (latInput && lngInput) {
+                latInput.value = parseFloat(savedLat).toFixed(6);
+                lngInput.value = parseFloat(savedLng).toFixed(6);
+                if (locStatus) {
+                    locStatus.textContent = "Координаты загружены с карты ✓";
+                    locStatus.style.color = "#2ecc71";
+                }
+                if (submitBtn) submitBtn.disabled = false;
+            }
+            localStorage.removeItem('selectedLat');
+            localStorage.removeItem('selectedLng');
+            return;
+        }
+
+        if (!latInput || !lngInput) return;
+
+        if ("geolocation" in navigator) {
+            if (locStatus) {
+                locStatus.textContent = "Загрузка геолокации...";
+                locStatus.style.color = "var(--text-muted)";
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    latInput.value = position.coords.latitude.toFixed(6);
+                    lngInput.value = position.coords.longitude.toFixed(6);
+                    if (locStatus) {
+                        locStatus.textContent = "Геопозиция определена успешно ✓";
+                        locStatus.style.color = "#2ecc71";
+                    }
+                    if (submitBtn) submitBtn.disabled = false;
+                    const geoModal = document.getElementById('geo-modal');
+                    if (geoModal) geoModal.classList.add('hidden');
+                },
+                (error) => {
+                    console.warn("Geolocation prompt or access failed:", error);
+                    if (locStatus) {
+                        locStatus.textContent = "Геолокация отклонена. Укажите координаты на карте.";
+                        locStatus.style.color = "#ef4444";
+                    }
+                    if (submitBtn) submitBtn.disabled = false;
+                    if (showModalOnFail) {
+                        const geoModal = document.getElementById('geo-modal');
+                        if (geoModal) geoModal.classList.remove('hidden');
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        } else {
+            if (locStatus) {
+                locStatus.textContent = "Браузер не поддерживает автоопределение.";
+                locStatus.style.color = "#ef4444";
+            }
+            if (submitBtn) submitBtn.disabled = false;
+            if (showModalOnFail) {
+                const geoModal = document.getElementById('geo-modal');
+                if (geoModal) geoModal.classList.remove('hidden');
+            }
+        }
+    }
+    window.requestLocationForReport = requestLocationForReport;
+
     // -----------------------------------------------------
     // 3. НАВИГАЦИОННАЯ МНОГОЭКРАННАЯ SPA СИСТЕМА
     // -----------------------------------------------------
@@ -415,9 +511,35 @@ document.addEventListener("DOMContentLoaded", () => {
                     map.invalidateSize();
                 }, 150);
             }
+
+            // Если перешли в "Добавить", запрашиваем геолокацию при включенном автоопределении
+            if (targetTab === 'report') {
+                if (isAutoGeoEnabled()) {
+                    requestLocationForReport(true);
+                } else {
+                    const savedLat = localStorage.getItem('selectedLat');
+                    const savedLng = localStorage.getItem('selectedLng');
+                    const latInput = document.getElementById('latitude');
+                    const lngInput = document.getElementById('longitude');
+                    const locStatus = document.getElementById('locationStatus');
+                    const submitBtn = document.getElementById('submitBtn');
+                    if (savedLat && savedLng && latInput && lngInput) {
+                        latInput.value = parseFloat(savedLat).toFixed(6);
+                        lngInput.value = parseFloat(savedLng).toFixed(6);
+                        if (locStatus) {
+                            locStatus.textContent = "Координаты загружены с карты ✓";
+                            locStatus.style.color = "#2ecc71";
+                        }
+                        if (submitBtn) submitBtn.disabled = false;
+                        localStorage.removeItem('selectedLat');
+                        localStorage.removeItem('selectedLng');
+                    }
+                }
+            }
             
             // При открытии профиля обновляем информацию
             if (targetTab === 'profile') {
+                initAutoGeoToggle();
                 loadProfileHistory();
             }
 
@@ -1100,7 +1222,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     updateStatsUI(allDbProblemsData);
                     updateHeatmap();
-                    updateMonthProgress(data);
+
+                    const currentUsername = getCurrentUsername();
+                    const isGuest = (localStorage.getItem('vaisperia_isGuest') === 'true');
+                    let userProblemsForMonth = [];
+                    if (!isGuest && currentUsername) {
+                        userProblemsForMonth = data.filter(prob => prob.username === currentUsername || prob.user_id_name === currentUsername);
+                    }
+                    updateMonthProgress(userProblemsForMonth);
                 })
                 .catch(error => console.error("Error fetching problems:", error));
         }
@@ -1216,40 +1345,49 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        const savedLat = localStorage.getItem('selectedLat');
-        const savedLng = localStorage.getItem('selectedLng');
+        // Обработчики кнопок модального окна разрешения геолокации
+        const btnGeoAllow = document.getElementById('btn-geo-allow');
+        const btnGeoLater = document.getElementById('btn-geo-later');
+        const geoModal = document.getElementById('geo-modal');
 
-        // Автоопределение локации
-        if (savedLat && savedLng) {
-            latInput.value = parseFloat(savedLat).toFixed(6);
-            lngInput.value = parseFloat(savedLng).toFixed(6);
-            locStatus.textContent = "Координаты загружены с карты ✓";
-            locStatus.style.color = "green";
-            submitBtn.disabled = false;
-            
-            localStorage.removeItem('selectedLat');
-            localStorage.removeItem('selectedLng');
-        } else if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    latInput.value = position.coords.latitude.toFixed(6);
-                    lngInput.value = position.coords.longitude.toFixed(6);
-                    locStatus.textContent = "Геопозиция определена успешно ✓";
-                    locStatus.style.color = "green";
-                    submitBtn.disabled = false;
-                },
-                (error) => {
-                    console.error("Geolocation error:", error);
-                    locStatus.textContent = "Отклонено. Укажите координаты на карте.";
-                    locStatus.style.color = "red";
-                    submitBtn.disabled = false; // Включаем кнопку для ручного ввода
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
+        if (btnGeoAllow) {
+            btnGeoAllow.addEventListener('click', () => {
+                if (geoModal) geoModal.classList.add('hidden');
+                requestLocationForReport(true);
+            });
+        }
+        if (btnGeoLater) {
+            btnGeoLater.addEventListener('click', () => {
+                if (geoModal) geoModal.classList.add('hidden');
+            });
+        }
+        if (geoModal) {
+            geoModal.addEventListener('click', (e) => {
+                if (e.target === geoModal) {
+                    geoModal.classList.add('hidden');
+                }
+            });
+        }
+
+        // Автоопределение локации при старте формы
+        if (isAutoGeoEnabled()) {
+            requestLocationForReport(false);
         } else {
-            locStatus.textContent = "Браузер не поддерживает автоопределение.";
-            locStatus.style.color = "red";
-            submitBtn.disabled = false;
+            const savedLat = localStorage.getItem('selectedLat');
+            const savedLng = localStorage.getItem('selectedLng');
+            if (savedLat && savedLng) {
+                latInput.value = parseFloat(savedLat).toFixed(6);
+                lngInput.value = parseFloat(savedLng).toFixed(6);
+                locStatus.textContent = "Координаты загружены с карты ✓";
+                locStatus.style.color = "green";
+                submitBtn.disabled = false;
+                localStorage.removeItem('selectedLat');
+                localStorage.removeItem('selectedLng');
+            } else {
+                locStatus.textContent = "Укажите координаты на карте или введите вручную.";
+                locStatus.style.color = "var(--text-muted)";
+                submitBtn.disabled = false;
+            }
         }
 
         latInput.addEventListener('input', () => { submitBtn.disabled = false; });

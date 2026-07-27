@@ -336,6 +336,16 @@
                     <!-- Настройки аккаунта -->
                     <div class="settings-section" style="margin-top: 20px;">
                         <h3>Настройки аккаунта</h3>
+                        <div class="settings-card" style="margin-bottom: 12px;">
+                            <div class="settings-info">
+                                <span class="settings-title">Авто-геолокация</span>
+                                <span class="settings-desc">Автоматически определять координаты при открытии отчета</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="auto-geo-toggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                         <div class="settings-card">
                             <div class="settings-info">
                                 <span class="settings-title">Текущая сессия</span>
@@ -422,6 +432,16 @@
                 <button type="button" id="safety-continue-btn" class="btn-safety-continue">
                     Продолжить
                 </button>
+    <!-- 4. Модальное окно запроса разрешения геолокации -->
+    <div id="geo-modal" class="modal-overlay hidden">
+        <div class="modal-card geo-modal-card">
+            <div class="geo-modal-icon">📍</div>
+            <h3>Включите геолокацию</h3>
+            <p class="geo-modal-text">Для точной отправки отчета приложению нужен доступ к вашим координатам.</p>
+            
+            <div class="geo-modal-actions">
+                <button type="button" id="btn-geo-allow" class="btn-geo-allow">Разрешить</button>
+                <button type="button" id="btn-geo-later" class="btn-geo-later">Позже</button>
             </div>
         </div>
     </div>
