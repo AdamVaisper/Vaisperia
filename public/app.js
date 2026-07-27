@@ -146,6 +146,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (isNaN(d.getTime())) return 'N/A';
 
+        const langMap = { ru: 'ru-RU', uz: 'uz-UZ', en: 'en-US' };
+        const currentLang = (window.i18n && typeof window.i18n.getCurrentLanguage === 'function') ? window.i18n.getCurrentLanguage() : 'ru';
+        const localeCode = langMap[currentLang] || 'ru-RU';
+
         const defaultOpts = {
             timeZone: 'Asia/Tashkent',
             day: 'numeric',
@@ -155,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
             minute: '2-digit'
         };
 
-        return d.toLocaleString('ru-RU', Object.assign({}, defaultOpts, options));
+        return d.toLocaleString(localeCode, Object.assign({}, defaultOpts, options));
     }
 
     function startWebcam() {
@@ -486,7 +490,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     latInput.value = position.coords.latitude.toFixed(6);
                     lngInput.value = position.coords.longitude.toFixed(6);
                     if (locStatus) {
-                        locStatus.textContent = "Геопозиция определена успешно ✓";
+                        locStatus.textContent = window.t ? window.t('loc_success', 'Геопозиция определена успешно ✓') : 'Геопозиция определена успешно ✓';
                         locStatus.style.color = "#2ecc71";
                     }
                     if (submitBtn) submitBtn.disabled = false;
@@ -496,7 +500,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 (error) => {
                     console.warn("Geolocation prompt or access failed:", error);
                     if (locStatus) {
-                        locStatus.textContent = "Геолокация отклонена. Укажите координаты на карте.";
+                        locStatus.textContent = window.t ? window.t('loc_denied', 'Геолокация отклонена. Укажите координаты на карте.') : 'Геолокация отклонена. Укажите координаты на карте.';
                         locStatus.style.color = "#ef4444";
                     }
                     if (submitBtn) submitBtn.disabled = false;
@@ -1106,6 +1110,12 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
         };
 
+        const getStatusBadgeText = (st) => {
+            if (st === 'new') return (window.t ? window.t('status_new', 'Новый') : 'Новый');
+            if (st === 'in_progress') return (window.t ? window.t('status_in_progress', 'В обработке') : 'В обработке');
+            return (window.t ? window.t('status_resolved', 'Решено') : 'Решено');
+        };
+
         // Генерация всплывающего окна
         const getPopupContent = (problem, state) => {
             let html = `<div class="popup-container">`;
@@ -1113,17 +1123,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 html += `<img src="${problem.photo_url}" class="popup-img" alt="Problem photo">`;
             }
             html += getAuthorHtml(problem);
-            html += `<div class="popup-details"><strong>Описание:</strong> ${problem.description}</div>`;
+            const descLabel = window.t ? window.t('desc_label_short', 'Описание:') : 'Описание:';
+            html += `<div class="popup-details"><strong>${descLabel}</strong> ${problem.description}</div>`;
             
-            let statusLabel = state.status === 'new' ? 'Новая' : (state.status === 'in_progress' ? 'В обработке' : 'Решена');
+            let statusLabel = getStatusBadgeText(state.status);
+            const statusTextHeader = window.t ? window.t('status_label', 'Статус:') : 'Статус:';
+            const createdTextHeader = window.t ? window.t('created_label', 'Создана:') : 'Создана:';
             html += `
                 <div class="popup-meta">
-                    <div>Статус: <span class="status-badge ${state.status}">${statusLabel}</span></div>
-                    <div>Создана: ${formatDateTashkent(state.createdAt)}</div>
+                    <div>${statusTextHeader} <span class="status-badge ${state.status}">${statusLabel}</span></div>
+                    <div>${createdTextHeader} ${formatDateTashkent(state.createdAt)}</div>
             `;
             
             if (state.status === 'resolved' && state.resolvedAt) {
-                 html += `<div>Решена: ${formatDateTashkent(state.resolvedAt)}</div>`;
+                 const resolvedTextHeader = window.t ? window.t('resolved_label', 'Решено:') : 'Решено:';
+                 html += `<div>${resolvedTextHeader} ${formatDateTashkent(state.resolvedAt)}</div>`;
             }
             html += `</div>`;
             html += `</div>`;
@@ -1169,20 +1183,24 @@ document.addEventListener("DOMContentLoaded", () => {
             const currentState = getProblemState(currentProblem);
 
             const contentContainer = sheet.querySelector('#bottomSheetContent');
-            let statusLabel = currentState.status === 'new' ? 'Новая' : (currentState.status === 'in_progress' ? 'В обработке' : 'Решена');
+            let statusLabel = getStatusBadgeText(currentState.status);
             let dateStr = formatDateTashkent(currentState.createdAt);
+
+            const prevTitleText = window.t ? window.t('carousel_prev_title', 'Предыдущий отчет') : 'Предыдущий отчет';
+            const nextTitleText = window.t ? window.t('carousel_next_title', 'Следующий отчет') : 'Следующий отчет';
 
             // Кнопки карусели и счетчик близлежащих отчетов
             let carouselControls = "";
             if (clusterList.length > 1) {
                 carouselControls = `
                     <div class="carousel-counter">${clusterIndex + 1} / ${clusterList.length}</div>
-                    <button type="button" class="carousel-arrow prev" id="carouselPrevBtn" title="Предыдущий отчет">◀</button>
-                    <button type="button" class="carousel-arrow next" id="carouselNextBtn" title="Следующий отчет">▶</button>
+                    <button type="button" class="carousel-arrow prev" id="carouselPrevBtn" title="${prevTitleText}">◀</button>
+                    <button type="button" class="carousel-arrow next" id="carouselNextBtn" title="${nextTitleText}">▶</button>
                 `;
             }
 
             let imgHtml = "";
+            const noPhotoText = window.t ? window.t('no_photo', '📷 Фотография отсутствует') : '📷 Фотография отсутствует';
             if (currentProblem.photo_url) {
                 imgHtml = `
                     <div class="sheet-img-container">
@@ -1193,12 +1211,13 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 imgHtml = `
                     <div class="sheet-img-container">
-                        <div class="sheet-no-img">📷 Фотография отсутствует</div>
+                        <div class="sheet-no-img">${noPhotoText}</div>
                         ${carouselControls}
                     </div>
                 `;
             }
 
+            const descLabelText = window.t ? window.t('desc_label_short', 'Описание:') : 'Описание:';
             let html = `
                 ${imgHtml}
                 <div class="sheet-details">
@@ -1207,11 +1226,12 @@ document.addEventListener("DOMContentLoaded", () => {
                         <span class="status-badge ${currentState.status}">${statusLabel}</span>
                         <span class="sheet-date">📅 ${dateStr}</span>
                     </div>
-                    <p class="sheet-desc"><strong>Описание:</strong> ${currentProblem.description}</p>
+                    <p class="sheet-desc"><strong>${descLabelText}</strong> ${currentProblem.description}</p>
             `;
 
             if (currentState.status === 'resolved' && currentState.resolvedAt) {
-                html += `<div class="sheet-resolved-date">Решено: ${formatDateTashkent(currentState.resolvedAt)}</div>`;
+                const resolvedLabelText = window.t ? window.t('resolved_label', 'Решено:') : 'Решено:';
+                html += `<div class="sheet-resolved-date">${resolvedLabelText} ${formatDateTashkent(currentState.resolvedAt)}</div>`;
             }
 
             html += `</div>`;
