@@ -1058,11 +1058,18 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
 
-        // Helper for Author Badge with Avatar
+        // Helper for Author Badge with Avatar (Strict Anonymity Override)
         const getAuthorHtml = (problem) => {
-            let authorName = problem.username || 'Анонимный гражданин';
-            let isAnon = (problem.is_anonymous == 1 || authorName === 'Анонимный гражданин' || authorName === 'Гость');
-            let avatarUrl = problem.user_avatar || (isAnon ? '' : getUserAvatar(authorName));
+            const rawUsername = problem.username || '';
+            const isAnon = (
+                problem.is_anonymous == 1 ||
+                problem.is_anonymous === '1' ||
+                problem.is_anonymous === true ||
+                problem.is_anonymous === 'true' ||
+                rawUsername === 'Анонимный гражданин' ||
+                rawUsername === 'Гость' ||
+                !rawUsername
+            );
 
             if (isAnon) {
                 return `
@@ -1073,7 +1080,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 `;
             }
 
-            let avatarMarkup = avatarUrl 
+            const authorName = rawUsername;
+            const avatarUrl = problem.user_avatar || getUserAvatar(authorName);
+
+            const avatarMarkup = avatarUrl 
                 ? `<img src="${avatarUrl}" class="author-avatar-img" alt="${authorName}">`
                 : `<div class="author-avatar-letter">${authorName.substring(0, 2).toUpperCase()}</div>`;
 
@@ -1105,10 +1115,6 @@ document.addEventListener("DOMContentLoaded", () => {
                  html += `<div>Решена: ${formatDateTashkent(state.resolvedAt)}</div>`;
             }
             html += `</div>`;
-
-            if (state.status !== 'resolved') {
-                 html += `<button type="button" class="btn-resolve" onclick="markProblemResolved(${problem.id})">Отметить как решенную</button>`;
-            }
             html += `</div>`;
             return html;
         };
@@ -1156,10 +1162,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (state.status === 'resolved' && state.resolvedAt) {
                 html += `<div class="sheet-resolved-date">Решено: ${formatDateTashkent(state.resolvedAt)}</div>`;
-            }
-
-            if (state.status !== 'resolved') {
-                html += `<button type="button" class="btn-resolve sheet-btn-resolve" onclick="markProblemResolved(${problem.id})">Отметить как решенную</button>`;
             }
 
             html += `</div>`;

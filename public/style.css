@@ -1979,7 +1979,7 @@ input:checked + .toggle-slider:before {
 .tg-settings-card {
   width: 100%;
   max-width: 400px;
-  padding: 16px;
+  padding: 16px 16px 120px 16px;
   box-sizing: border-box;
   margin: 0 auto;
   border-radius: 20px;
