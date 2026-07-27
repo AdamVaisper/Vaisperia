@@ -841,23 +841,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!isNaN(parsedResolved)) resolvedAtMs = parsedResolved;
             }
 
-            const saved = localStorage.getItem('problemState_' + problem.id);
-            if (saved) {
-                try {
-                    const parsedSaved = JSON.parse(saved);
-                    const dbStatus = problem.status;
-                    if (dbStatus && dbStatus !== 'new') {
-                        parsedSaved.status = dbStatus;
-                        if (dbStatus === 'resolved' && !parsedSaved.resolvedAt) {
-                            parsedSaved.resolvedAt = resolvedAtMs || Date.now();
-                        }
-                    }
-                    return parsedSaved;
-                } catch (e) {}
+            // Статус отчета форсируется СТРОГО из базы данных (без сбоев из-за локального кэша)
+            let status = problem.status || 'new';
+
+            // Авто-переход Красный ('new') -> Желтый ('in_progress') через 24 часа с момента создания
+            const now = Date.now();
+            if (status === 'new' && (now - timeMs >= 24 * 60 * 60 * 1000 || isNextCalendarDay(timeMs, now))) {
+                status = 'in_progress';
             }
 
             return {
-                status: problem.status || 'new',
+                status: status,
                 createdAt: timeMs,
                 resolvedAt: resolvedAtMs
             };
@@ -1119,7 +1113,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return html;
         };
 
-        function openBottomSheet(problem, state) {
+        function openBottomSheet(problem, state, clusterList = null, clusterIndex = 0) {
             let sheet = document.getElementById('report-bottom-sheet');
             if (!sheet) {
                 sheet = document.createElement('div');
@@ -1138,30 +1132,69 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
+            // Поиск соседних отчетов в той же локации (радиус ~250м), если список не был передан
+            if (!clusterList) {
+                const targetLat = problem.latitude;
+                const targetLng = problem.longitude;
+                clusterList = (allDbProblemsData || []).filter(p => {
+                    const dLat = Math.abs(p.latitude - targetLat);
+                    const dLng = Math.abs(p.longitude - targetLng);
+                    return dLat <= 0.003 && dLng <= 0.003;
+                });
+                clusterIndex = clusterList.findIndex(p => p.id === problem.id);
+                if (clusterIndex === -1) {
+                    clusterList = [problem];
+                    clusterIndex = 0;
+                }
+            }
+
+            const currentProblem = clusterList[clusterIndex] || problem;
+            const currentState = getProblemState(currentProblem);
+
             const contentContainer = sheet.querySelector('#bottomSheetContent');
-            let statusLabel = state.status === 'new' ? 'Новая' : (state.status === 'in_progress' ? 'В обработке' : 'Решена');
-            let dateStr = formatDateTashkent(state.createdAt);
+            let statusLabel = currentState.status === 'new' ? 'Новая' : (currentState.status === 'in_progress' ? 'В обработке' : 'Решена');
+            let dateStr = formatDateTashkent(currentState.createdAt);
+
+            // Кнопки карусели и счетчик близлежащих отчетов
+            let carouselControls = "";
+            if (clusterList.length > 1) {
+                carouselControls = `
+                    <div class="carousel-counter">${clusterIndex + 1} / ${clusterList.length}</div>
+                    <button type="button" class="carousel-arrow prev" id="carouselPrevBtn" title="Предыдущий отчет">◀</button>
+                    <button type="button" class="carousel-arrow next" id="carouselNextBtn" title="Следующий отчет">▶</button>
+                `;
+            }
 
             let imgHtml = "";
-            if (problem.photo_url) {
-                imgHtml = `<img src="${problem.photo_url}" class="sheet-img" alt="Фото проблемы">`;
+            if (currentProblem.photo_url) {
+                imgHtml = `
+                    <div class="sheet-img-container">
+                        <img src="${currentProblem.photo_url}" class="sheet-img" alt="Фото проблемы">
+                        ${carouselControls}
+                    </div>
+                `;
             } else {
-                imgHtml = `<div class="sheet-no-img">📷 Фотография отсутствует</div>`;
+                imgHtml = `
+                    <div class="sheet-img-container">
+                        <div class="sheet-no-img">📷 Фотография отсутствует</div>
+                        ${carouselControls}
+                    </div>
+                `;
             }
 
             let html = `
                 ${imgHtml}
                 <div class="sheet-details">
-                    ${getAuthorHtml(problem)}
+                    ${getAuthorHtml(currentProblem)}
                     <div class="sheet-header">
-                        <span class="status-badge ${state.status}">${statusLabel}</span>
+                        <span class="status-badge ${currentState.status}">${statusLabel}</span>
                         <span class="sheet-date">📅 ${dateStr}</span>
                     </div>
-                    <p class="sheet-desc"><strong>Описание:</strong> ${problem.description}</p>
+                    <p class="sheet-desc"><strong>Описание:</strong> ${currentProblem.description}</p>
             `;
 
-            if (state.status === 'resolved' && state.resolvedAt) {
-                html += `<div class="sheet-resolved-date">Решено: ${formatDateTashkent(state.resolvedAt)}</div>`;
+            if (currentState.status === 'resolved' && currentState.resolvedAt) {
+                html += `<div class="sheet-resolved-date">Решено: ${formatDateTashkent(currentState.resolvedAt)}</div>`;
             }
 
             html += `</div>`;
@@ -1169,6 +1202,27 @@ document.addEventListener("DOMContentLoaded", () => {
             contentContainer.innerHTML = html;
             sheet.classList.remove('hidden');
             sheet.classList.add('active');
+
+            // Навешивание обработчиков стрелок карусели
+            if (clusterList.length > 1) {
+                const prevBtn = contentContainer.querySelector('#carouselPrevBtn');
+                const nextBtn = contentContainer.querySelector('#carouselNextBtn');
+
+                if (prevBtn) {
+                    prevBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const newIdx = (clusterIndex - 1 + clusterList.length) % clusterList.length;
+                        openBottomSheet(clusterList[newIdx], getProblemState(clusterList[newIdx]), clusterList, newIdx);
+                    });
+                }
+                if (nextBtn) {
+                    nextBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const newIdx = (clusterIndex + 1) % clusterList.length;
+                        openBottomSheet(clusterList[newIdx], getProblemState(clusterList[newIdx]), clusterList, newIdx);
+                    });
+                }
+            }
         }
 
         function closeBottomSheet() {
