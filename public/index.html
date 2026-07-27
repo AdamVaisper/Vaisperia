@@ -17,6 +17,20 @@
     <!-- 1. Блокирующий экран биометрической регистрации (Biometric Modal Overlay) -->
     <div id="login-screen" class="login-wrapper">
         <div class="login-card" style="max-width: 420px;">
+            <!-- Переключатель языка на экране первого входа -->
+            <div class="lang-selector-wrapper login-lang-selector">
+                <button type="button" id="loginLangBtn" class="lang-dropdown-btn" title="Выбор языка / Tilni tanlash / Select language">
+                    <span id="loginLangFlag">🇷🇺</span>
+                    <span id="loginLangCode" class="lang-code-text">RU</span>
+                    <span class="lang-dropdown-arrow">▼</span>
+                </button>
+                <div id="loginLangMenu" class="lang-dropdown-menu hidden">
+                    <button type="button" class="lang-option" data-lang="ru"><span class="flag">🇷🇺</span> Русский</button>
+                    <button type="button" class="lang-option" data-lang="uz"><span class="flag">🇺🇿</span> O'zbekcha</button>
+                    <button type="button" class="lang-option" data-lang="en"><span class="flag">🇬🇧</span> English</button>
+                </div>
+            </div>
+
             <div class="login-logo">
                 <span class="logo-symbol">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;">
@@ -31,7 +45,7 @@
                     </svg>
                 </span>
                 <h2>Vaisperia</h2>
-                <p id="bio-subtitle">Обязательный биометрический контроль гражданина</p>
+                <p id="bio-subtitle" data-i18n="bio_subtitle">Обязательный биометрический контроль гражданина</p>
             </div>
             
             <div id="bio-error-msg" class="alert error" style="display:none; margin-bottom:16px;"></div>
@@ -40,27 +54,27 @@
             <div id="bio-step-1">
                 <form id="bioStep1Form">
                     <div class="form-group-login">
-                        <label for="username">Никнейм гражданина</label>
-                        <input type="text" id="username" placeholder="Введите ваш никнейм" required>
+                        <label for="username" data-i18n="label_username">Никнейм гражданина</label>
+                        <input type="text" id="username" data-i18n-placeholder="placeholder_username" placeholder="Введите ваш никнейм" required>
                     </div>
 
                     <div class="form-group-login">
-                        <label for="email">Электронная почта (Gmail)</label>
-                        <input type="email" id="email" placeholder="example@gmail.com" required>
+                        <label for="email" data-i18n="label_email">Электронная почта (Gmail)</label>
+                        <input type="email" id="email" data-i18n-placeholder="placeholder_email" placeholder="example@gmail.com" required>
                     </div>
                     
                     <div class="form-group-login">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <label for="password" style="margin-bottom: 0;">Пароль доступа</label>
-                            <button type="button" id="btnOpenForgotPassword" style="background: none; border: none; color: var(--eco-emerald); font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 0;">Забыли пароль?</button>
+                            <label for="password" style="margin-bottom: 0;" data-i18n="label_password">Пароль доступа</label>
+                            <button type="button" id="btnOpenForgotPassword" style="background: none; border: none; color: var(--eco-emerald); font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 0;" data-i18n="btn_forgot_password">Забыли пароль?</button>
                         </div>
                         <input type="password" id="password" placeholder="••••••••" required>
                     </div>
                     
-                    <button type="submit" class="btn-login" id="btnGoToBioStep2">Далее: Сканирование лица ➔</button>
+                    <button type="submit" class="btn-login" id="btnGoToBioStep2" data-i18n="btn_next_bio">Далее: Сканирование лица ➔</button>
                 </form>
                 <div style="margin-top: 14px; text-align: center;">
-                    <button type="button" class="btn-guest" id="btnGuestLogin" style="width:100%; padding: 12px; background: transparent; border: 1.5px dashed var(--eco-emerald); color: var(--eco-forest); font-weight: 700; border-radius: 12px; cursor: pointer; transition: var(--transition-smooth);">
+                    <button type="button" class="btn-guest" id="btnGuestLogin" style="width:100%; padding: 12px; background: transparent; border: 1.5px dashed var(--eco-emerald); color: var(--eco-forest); font-weight: 700; border-radius: 12px; cursor: pointer; transition: var(--transition-smooth);" data-i18n="btn_guest_login">
                         👤 Продолжить как гость
                     </button>
                 </div>
@@ -74,11 +88,11 @@
                     <div class="webcam-overlay-grid" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 2px dashed rgba(16, 185, 129, 0.6); border-radius: 50%; width: 140px; height: 140px; margin: auto; pointer-events: none;"></div>
                 </div>
 
-                <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">Разместите лицо по центру каучуковой рамки для уникальной биометрической идентификации.</p>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;" data-i18n="bio_step2_hint">Разместите лицо по центру каучуковой рамки для уникальной биометрической идентификации.</p>
 
                 <div style="display: flex; gap: 10px;">
-                    <button type="button" class="btn-login" id="btnBackToStep1" style="background: #E2E8F0; color: var(--text-main); flex: 1;">↩ Назад</button>
-                    <button type="button" class="btn-login" id="btnSubmitBiometrics" style="flex: 2;">Пройти биометрию 🗸</button>
+                    <button type="button" class="btn-login" id="btnBackToStep1" style="background: #E2E8F0; color: var(--text-main); flex: 1;" data-i18n="btn_back">↩ Назад</button>
+                    <button type="button" class="btn-login" id="btnSubmitBiometrics" style="flex: 2;" data-i18n="btn_submit_bio">Пройти биометрию 🗸</button>
                 </div>
             </div>
         </div>
@@ -91,7 +105,7 @@
         <header class="app-header">
             <div class="logo-area">
                 <span class="logo-emoji">🌱</span>
-                <h1>Vaisperia</h1>
+                <h1 data-i18n="app_title">Vaisperia</h1>
             </div>
         </header>
 
@@ -102,11 +116,11 @@
             <section id="section-home" class="tab-section active">
                 <div class="welcome-box">
                     <div class="welcome-text">
-                        <span class="user-greeting">Рады видеть вас,</span>
-                        <h2 class="user-name" id="home-username">Гражданин</h2>
+                        <span class="user-greeting" data-i18n="welcome_greeting">Рады видеть вас,</span>
+                        <h2 class="user-name" id="home-username" data-i18n="default_citizen">Гражданин</h2>
                     </div>
                     <div class="points-badge-box">
-                        <span class="points-title">Баланс эко-коинов</span>
+                        <span class="points-title" data-i18n="points_title">Баланс эко-коинов</span>
                         <div class="points-value">
                             <span class="points-num" id="home-balance">340</span>
                             <span class="points-icon">🍃</span>
@@ -115,33 +129,33 @@
                 </div>
 
                 <div class="stats-overview-card">
-                    <h3>Ваш вклад в город</h3>
+                    <h3 data-i18n="your_contribution">Ваш вклад в город</h3>
                     <div class="rank-card">
                         <div class="rank-emoji">🛡️</div>
                         <div class="rank-details">
-                            <span class="rank-label">Текущий ранг:</span>
-                            <strong class="rank-name" id="home-rank">Эко-патруль</strong>
+                            <span class="rank-label" data-i18n="current_rank_label">Текущий ранг:</span>
+                            <strong class="rank-name" id="home-rank" data-i18n="rank_eco_patrol">Эко-патруль</strong>
                         </div>
                     </div>
                 </div>
 
                 <div class="info-section">
-                    <h3>Как заработать баллы?</h3>
+                    <h3 data-i18n="how_to_earn_title">Как заработать баллы?</h3>
                     <div class="info-grid">
                         <div class="info-card">
                             <div class="info-icon">📸</div>
-                            <h4>Сообщите о проблеме</h4>
-                            <p>Сфотографируйте свалку, сломанный фонарь или засуху на улице Нукуса.</p>
+                            <h4 data-i18n="earn_card1_title">Сообщите о проблеме</h4>
+                            <p data-i18n="earn_card1_desc">Сфотографируйте свалку, сломанный фонарь или засуху на улице Нукуса.</p>
                         </div>
                         <div class="info-card">
                             <div class="info-icon">🍃</div>
-                            <h4>Получите +50 баллов</h4>
-                            <p>Каждая подтвержденная заявка приносит эко-коины на ваш игровой счет в приложении.</p>
+                            <h4 data-i18n="earn_card2_title">Получите +50 баллов</h4>
+                            <p data-i18n="earn_card2_desc">Каждая подтвержденная заявка приносит эко-коины на ваш игровой счет в приложении.</p>
                         </div>
                         <div class="info-card">
                             <div class="info-icon">🎁</div>
-                            <h4>Обменяйте в магазине</h4>
-                            <p>Покупайте стильные аксессуары, эко-сувениры или получайте скидки у партнеров Vaisperia!</p>
+                            <h4 data-i18n="earn_card3_title">Обменяйте в магазине</h4>
+                            <p data-i18n="earn_card3_desc">Покупайте стильные аксессуары, эко-сувениры или получайте скидки у партнеров Vaisperia!</p>
                         </div>
                     </div>
                 </div>
@@ -157,25 +171,25 @@
             <!-- Вкладка: Добавить (Report Form) -->
             <section id="section-report" class="tab-section hidden">
                 <div class="container report-form-wrapper">
-                    <h2>Сообщить о городской проблеме</h2>
+                    <h2 data-i18n="report_title">Сообщить о городской проблеме</h2>
                     
                     <!-- Обучающая строка UX Micro-hint -->
                     <div class="ux-micro-hint">
                         <span class="hint-icon">🟢</span>
-                        <span class="hint-text"><strong>Полезный совет:</strong> Чем точнее фотография и геолокация, тем быстрее организация сможет решить проблему.</span>
+                        <span class="hint-text"><strong data-i18n="ux_hint_label">Полезный совет:</strong> <span data-i18n="ux_hint_text">Чем точнее фотография и геолокация, тем быстрее организация сможет решить проблему.</span></span>
                     </div>
 
                     <!-- Карточка прогресса за месяц -->
                     <div class="progress-card">
                         <div class="progress-header">
-                            <span class="progress-title">Прогресс за месяц</span>
-                            <span class="progress-value-label"><span id="month-progress-current">0</span>/10 отчетов</span>
+                            <span class="progress-title" data-i18n="month_progress_title">Прогресс за месяц</span>
+                            <span class="progress-value-label"><span id="month-progress-current">0</span>/10 <span data-i18n="month_progress_units">отчетов</span></span>
                         </div>
                         <div class="progress-bar-container">
                             <div class="progress-bar-fill" id="month-progress-fill" style="width: 0%;"></div>
                         </div>
                         <div class="progress-footer">
-                            <span>Цель: 10 отчетов для бонуса</span>
+                            <span data-i18n="month_progress_goal">Цель: 10 отчетов для бонуса</span>
                             <span id="month-progress-percent">0%</span>
                         </div>
                     </div>
@@ -185,90 +199,90 @@
                     <form id="reportForm">
                         <!-- Плитки категорий -->
                         <div class="form-group">
-                            <label>Категория проблемы</label>
+                            <label data-i18n="cat_label">Категория проблемы</label>
                             <div class="category-tiles-container" id="category-tiles">
                                 <div class="category-tile selected" data-value="Дороги">
                                     <span class="category-icon">🚗</span>
-                                    <span class="category-label">Дороги</span>
+                                    <span class="category-label" data-i18n="cat_roads">Дороги</span>
                                 </div>
                                 <div class="category-tile" data-value="Вода">
                                     <span class="category-icon">💧</span>
-                                    <span class="category-label">Вода</span>
+                                    <span class="category-label" data-i18n="cat_water">Вода</span>
                                 </div>
                                 <div class="category-tile" data-value="Электричество">
                                     <span class="category-icon">⚡</span>
-                                    <span class="category-label">Элек-тво</span>
+                                    <span class="category-label" data-i18n="cat_electricity">Элек-тво</span>
                                 </div>
                                 <div class="category-tile" data-value="Газ">
                                     <span class="category-icon">🔥</span>
-                                    <span class="category-label">Газ</span>
+                                    <span class="category-label" data-i18n="cat_gas">Газ</span>
                                 </div>
                                 <div class="category-tile" data-value="Пожар">
                                     <span class="category-icon">🚨</span>
-                                    <span class="category-label">Пожар</span>
+                                    <span class="category-label" data-i18n="cat_fire">Пожар</span>
                                 </div>
                                 <div class="category-tile" data-value="Дорожная авария">
                                     <span class="category-icon">💥</span>
-                                    <span class="category-label">ДТП</span>
+                                    <span class="category-label" data-i18n="cat_accident">ДТП</span>
                                 </div>
                                 <div class="category-tile" data-value="Опасные вещества">
                                     <span class="category-icon">⚠️</span>
-                                    <span class="category-label">Опасн. в-ва</span>
+                                    <span class="category-label" data-i18n="cat_hazard">Опасн. в-ва</span>
                                 </div>
                                 <div class="category-tile" data-value="Мусор">
                                     <span class="category-icon">🗑️</span>
-                                    <span class="category-label">Мусор</span>
+                                    <span class="category-label" data-i18n="cat_garbage">Мусор</span>
                                 </div>
                                 <div class="category-tile" data-value="Здания">
                                     <span class="category-icon">🏢</span>
-                                    <span class="category-label">Здания</span>
+                                    <span class="category-label" data-i18n="cat_buildings">Здания</span>
                                 </div>
                                 <div class="category-tile" data-value="Другое">
                                     <span class="category-icon">✨</span>
-                                    <span class="category-label">Другое</span>
+                                    <span class="category-label" data-i18n="cat_other">Другое</span>
                                 </div>
                             </div>
                             <input type="hidden" id="report-category" name="category" value="Дороги">
                         </div>
 
                         <div class="form-group">
-                            <label for="photo">Фотография проблемы (До 5МБ)</label>
+                            <label for="photo" data-i18n="photo_label">Фотография проблемы (До 5МБ)</label>
                             <div class="file-upload-wrapper">
                                 <input type="file" id="photo" name="photo" accept="image/*" capture="environment" required>
                                 <div class="file-upload-dummy">
                                     <span class="file-dummy-icon">📸</span>
-                                    <span class="file-dummy-text" id="photo-selected-name">Сделать снимок на месте</span>
+                                    <span class="file-dummy-text" id="photo-selected-name" data-i18n="photo_dummy">Сделать снимок на месте</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label for="description">Описание проблемы</label>
-                            <textarea id="description" name="description" placeholder="Детально опишите проблему (например: открытый люк, куча мусора за домом, поломка освещения...)" required></textarea>
+                            <label for="description" data-i18n="desc_label">Описание проблемы</label>
+                            <textarea id="description" name="description" data-i18n-placeholder="desc_placeholder" placeholder="Детально опишите проблему (например: открытый люк, куча мусора за домом, поломка освещения...)" required></textarea>
                         </div>
 
                         <div class="form-group">
-                            <label>Координаты местоположения</label>
+                            <label data-i18n="location_label">Координаты местоположения</label>
                             <div class="location-fields">
-                                <input type="text" id="latitude" name="latitude" placeholder="Широта" required>
-                                <input type="text" id="longitude" name="longitude" placeholder="Долгота" required>
+                                <input type="text" id="latitude" name="latitude" data-i18n-placeholder="lat_placeholder" placeholder="Широта" required>
+                                <input type="text" id="longitude" name="longitude" data-i18n-placeholder="lng_placeholder" placeholder="Долгота" required>
                             </div>
-                            <small id="locationStatus">Загрузка геолокации...</small>
-                            <small class="location-hint">Вы также можете установить маркер, просто кликнув по нужному месту на вкладке «Карта».</small>
+                            <small id="locationStatus" data-i18n="loc_loading">Загрузка геолокации...</small>
+                            <small class="location-hint" data-i18n="loc_hint">Вы также можете установить маркер, просто кликнув по нужному месту на вкладке «Карта».</small>
                         </div>
 
                         <!-- Чекбокс анонимной публикации (Только для зарегистрированных) -->
                         <div class="form-group hidden" id="anonymous-option-wrapper">
                             <label class="checkbox-container" style="display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;">
                                 <input type="checkbox" id="is-anonymous-checkbox" name="isAnonymous" value="true" style="width: 18px; height: 18px; accent-color: var(--eco-emerald); cursor: pointer;">
-                                <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">🔒 Опубликовать анонимно</span>
+                                <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);" data-i18n="anon_checkbox">🔒 Опубликовать анонимно</span>
                             </label>
-                            <small style="display: block; color: var(--text-muted); font-size: 0.78rem; margin-top: 4px;">
+                            <small style="display: block; color: var(--text-muted); font-size: 0.78rem; margin-top: 4px;" data-i18n="anon_hint">
                                 Ваше имя будет скрыто на карте ("Анонимный гражданин"), но баллы и XP зачислятся в ваш профиль.
                             </small>
                         </div>
 
-                        <button type="submit" class="btn-submit" id="submitBtn" disabled>Отправить отчет</button>
+                        <button type="submit" class="btn-submit" id="submitBtn" data-i18n="btn_submit_report" disabled>Отправить отчет</button>
                     </form>
                 </div>
             </section>
@@ -277,12 +291,12 @@
             <section id="section-shop" class="tab-section hidden">
                 <div class="shop-wrapper">
                     <div class="section-title-box">
-                        <h2>Магазин эко-наград</h2>
-                        <p>Меняйте накопленные эко-коины на классные бонусы</p>
+                        <h2 data-i18n="shop_title">Магазин эко-наград</h2>
+                        <p data-i18n="shop_subtitle">Меняйте накопленные эко-коины на классные бонусы</p>
                     </div>
                     
                     <div class="shop-grid" id="shop-items-container">
-                        <!-- Награды будут сгенерированы в JS, но заложим структуру для примера -->
+                        <!-- Награды будут сгенерированы в JS -->
                     </div>
                 </div>
             </section>
@@ -300,18 +314,18 @@
                                 <div class="avatar-leaf">🌱</div>
                             </div>
                             <div class="profile-text">
-                                <h3 id="profile-username-tag">Гражданин</h3>
-                                <span class="profile-rank-badge">🛡️ Эко-патруль</span>
+                                <h3 id="profile-username-tag" data-i18n="default_citizen">Гражданин</h3>
+                                <span class="profile-rank-badge">🛡️ <span data-i18n="rank_eco_patrol">Эко-патруль</span></span>
                             </div>
                         </div>
                         <div class="profile-stats-row">
                             <div class="p-stat">
                                 <span class="p-stat-val" id="profile-balance">340</span>
-                                <span class="p-stat-lbl">Коинов</span>
+                                <span class="p-stat-lbl" data-i18n="profile_coins">Коинов</span>
                             </div>
                             <div class="p-stat">
                                 <span class="p-stat-val" id="profile-reports-count">0</span>
-                                <span class="p-stat-lbl">Заявок</span>
+                                <span class="p-stat-lbl" data-i18n="profile_reports">Заявок</span>
                             </div>
                         </div>
                     </div>
@@ -319,7 +333,7 @@
                     <!-- Индикатор уровня и XP Progress -->
                     <div class="xp-level-card">
                         <div class="xp-level-header">
-                            <span class="xp-level-title">Уровень <span id="profile-level-val">1</span></span>
+                            <span class="xp-level-title"><span data-i18n="profile_level">Уровень</span> <span id="profile-level-val">1</span></span>
                             <span class="xp-detail-val"><span id="profile-xp-val">0</span> / 100 XP</span>
                         </div>
                         <div class="xp-progress-bar-wrapper">
@@ -329,7 +343,7 @@
 
                     <!-- Достижения (Ачивки) -->
                     <div class="achievements-section">
-                        <h3>Ваши эко-достижения</h3>
+                        <h3 data-i18n="achievements_header">Ваши эко-достижения</h3>
                         <div class="achievements-grid" id="achievements-container">
                             <!-- Генерируется динамически с красивой анимацией в app.js -->
                         </div>
@@ -337,9 +351,9 @@
 
                     <!-- История обращений (Реальный Бэкенд) -->
                     <div class="history-section">
-                        <h3>История ваших сообщений</h3>
+                        <h3 data-i18n="history_header">История ваших сообщений</h3>
                         <div class="history-list" id="profile-history-list">
-                            <div class="history-placeholder">Загрузка истории обращений...</div>
+                            <div class="history-placeholder" data-i18n="history_loading">Загрузка истории обращений...</div>
                         </div>
                     </div>
                 </div>
@@ -351,23 +365,23 @@
         <nav class="bottom-nav">
             <button type="button" class="nav-tab active" data-tab="home">
                 <span class="nav-icon">🏠</span>
-                <span class="nav-label">Главная</span>
+                <span class="nav-label" data-i18n="nav_home">Главная</span>
             </button>
             <button type="button" class="nav-tab" data-tab="map">
                 <span class="nav-icon">🗺️</span>
-                <span class="nav-label">Карта</span>
+                <span class="nav-label" data-i18n="nav_map">Карта</span>
             </button>
             <button type="button" class="nav-tab" data-tab="report">
                 <span class="nav-icon">➕</span>
-                <span class="nav-label">Добавить</span>
+                <span class="nav-label" data-i18n="nav_report">Добавить</span>
             </button>
             <button type="button" class="nav-tab" data-tab="shop">
                 <span class="nav-icon">🛍️</span>
-                <span class="nav-label">Магазин</span>
+                <span class="nav-label" data-i18n="nav_shop">Магазин</span>
             </button>
             <button type="button" class="nav-tab" data-tab="profile">
                 <span class="nav-icon">👤</span>
-                <span class="nav-label">Профиль</span>
+                <span class="nav-label" data-i18n="nav_profile">Профиль</span>
             </button>
         </nav>
 
@@ -376,21 +390,18 @@
     <!-- QR Code Coupon Voucher System Modal -->
     <div id="qr-modal" class="modal-overlay hidden">
         <div class="modal-card">
-            <h3>Ваш эко-купон</h3>
+            <h3 data-i18n="qr_title">Ваш эко-купон</h3>
             <p id="qr-coupon-item-name">Название купона</p>
             
             <div class="qr-container">
                 <svg id="coupon-qr" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Будет сгенерирован красивый стилизованный QR-код векторно -->
                     <rect width="100" height="100" fill="#fff" rx="8"/>
-                    <!-- QR simulation paths -->
                     <path d="M10,10 h20 v20 h-20 z" fill="#1e3f20" />
                     <path d="M15,15 h10 v10 h-10 z" fill="#fff" />
                     <path d="M70,10 h20 v20 h-20 z" fill="#1e3f20" />
                     <path d="M75,15 h10 v10 h-10 z" fill="#fff" />
                     <path d="M10,70 h20 v20 h-20 z" fill="#1e3f20" />
                     <path d="M15,75 h10 v10 h-10 z" fill="#fff" />
-                    <!-- Random blocks patterns -->
                     <path d="M40,15 h5 v5 h-5 z M50,10 h10 v5 h-10 z M45,25 h15 v5 h-15 z" fill="#1e3f20" />
                     <path d="M10,40 h10 v5 h-10 z M25,45 h5 v10 h-5 z M15,55 h10 v5 h-10 z" fill="#1e3f20" />
                     <path d="M70,40 h15 v5 h-15 z M80,50 h10 v10 h-10 z M75,65 h5 v10 h-5 z" fill="#1e3f20" />
@@ -401,8 +412,8 @@
                 <div class="qr-code-text" id="qr-coupon-code">VAISPERIA-XXXXXX</div>
             </div>
             
-            <p class="qr-instruction">Покажите этот QR-код партнеру для выдачи и получения эко-подарка.</p>
-            <button type="button" class="btn-close-modal" id="closeQrModalBtn">Закрыть</button>
+            <p class="qr-instruction" data-i18n="qr_instruction">Покажите этот QR-код партнеру для выдачи и получения эко-подарка.</p>
+            <button type="button" class="btn-close-modal" id="closeQrModalBtn" data-i18n="btn_close">Закрыть</button>
         </div>
     </div>
 
@@ -410,14 +421,14 @@
     <div id="safety-modal" class="modal-overlay hidden">
         <div class="modal-card safety-modal-card">
             <div class="safety-modal-icon">⚠️</div>
-            <h3 id="safety-modal-title">Экстренное предупреждение</h3>
+            <h3 id="safety-modal-title" data-i18n="safety_title">Экстренное предупреждение</h3>
             <p id="safety-modal-text" class="safety-modal-text">Предупреждение...</p>
             
             <div class="safety-modal-actions">
-                <a id="safety-emergency-call-btn" href="tel:112" type="button" class="btn-emergency-call">
+                <a id="safety-emergency-call-btn" href="tel:112" type="button" class="btn-emergency-call" data-i18n="btn_emergency">
                     📞 Позвонить в аварийную службу
                 </a>
-                <button type="button" id="safety-continue-btn" class="btn-safety-continue">
+                <button type="button" id="safety-continue-btn" class="btn-safety-continue" data-i18n="btn_continue">
                     Продолжить
                 </button>
             </div>
@@ -428,12 +439,12 @@
     <div id="geo-modal" class="modal-overlay hidden">
         <div class="modal-card geo-modal-card">
             <div class="geo-modal-icon">📍</div>
-            <h3>Включите геолокацию</h3>
-            <p class="geo-modal-text">Для точной отправки отчета приложению нужен доступ к вашим координатам.</p>
+            <h3 data-i18n="geo_title">Включите геолокацию</h3>
+            <p class="geo-modal-text" data-i18n="geo_desc">Для точной отправки отчета приложению нужен доступ к вашим координатам.</p>
             
             <div class="geo-modal-actions">
-                <button type="button" id="btn-geo-allow" class="btn-geo-allow">Разрешить</button>
-                <button type="button" id="btn-geo-later" class="btn-geo-later">Позже</button>
+                <button type="button" id="btn-geo-allow" class="btn-geo-allow" data-i18n="btn_allow">Разрешить</button>
+                <button type="button" id="btn-geo-later" class="btn-geo-later" data-i18n="btn_later">Позже</button>
             </div>
         </div>
     </div>
@@ -442,8 +453,8 @@
     <div id="telegram-settings-modal" class="modal-overlay hidden">
         <div class="modal-card tg-settings-card">
             <div class="tg-settings-header">
-                <button type="button" id="closeTgSettingsBtn" class="tg-back-btn">← Назад</button>
-                <h3>Настройки ⚙️</h3>
+                <button type="button" id="closeTgSettingsBtn" class="tg-back-btn" data-i18n="btn_back">← Назад</button>
+                <h3 data-i18n="settings_title">Настройки ⚙️</h3>
             </div>
 
             <div class="tg-settings-body">
@@ -454,39 +465,58 @@
                         <img id="tg-avatar-img" class="hidden" alt="Avatar Preview" />
                     </div>
                     <div class="tg-avatar-actions">
-                        <label for="avatar-file-input" class="btn-upload-avatar">
+                        <label for="avatar-file-input" class="btn-upload-avatar" data-i18n="change_avatar">
                             📸 Изменить фото профиля
                         </label>
                         <input type="file" id="avatar-file-input" accept="image/*" class="hidden">
-                        <small class="avatar-hint">Загрузите из галереи (до 5 МБ, проверяется фильтрами безопасности)</small>
+                        <small class="avatar-hint" data-i18n="avatar_hint">Загрузите из галереи (до 5 МБ, проверяется фильтрами безопасности)</small>
                     </div>
                 </div>
                 <div id="avatar-error-msg" class="alert error hidden" style="margin-top: 8px; font-size: 0.8rem;"></div>
 
                 <!-- Смена Никнейма -->
                 <div class="tg-setting-group">
-                    <label>Имя пользователя (никнейм)</label>
+                    <label data-i18n="label_setting_username">Имя пользователя (никнейм)</label>
                     <div class="tg-input-row">
-                        <input type="text" id="setting-username-input" placeholder="Введите ваш ник" class="tg-input">
-                        <button type="button" id="btnSaveUsername" class="tg-btn-save">Сохранить</button>
+                        <input type="text" id="setting-username-input" data-i18n-placeholder="placeholder_setting_username" placeholder="Введите ваш ник" class="tg-input">
+                        <button type="button" id="btnSaveUsername" class="tg-btn-save" data-i18n="btn_save">Сохранить</button>
                     </div>
                 </div>
 
                 <!-- Смена Gmail -->
                 <div class="tg-setting-group">
-                    <label>Электронная почта (Gmail)</label>
+                    <label data-i18n="label_setting_email">Электронная почта (Gmail)</label>
                     <div class="tg-input-row">
                         <input type="email" id="setting-email-input" placeholder="example@gmail.com" class="tg-input">
-                        <button type="button" id="btnSaveEmail" class="tg-btn-save">Изменить</button>
+                        <button type="button" id="btnSaveEmail" class="tg-btn-save" data-i18n="btn_change">Изменить</button>
                     </div>
-                    <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">Требуется подтверждение биометрией или паролем</small>
+                    <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;" data-i18n="email_hint">Требуется подтверждение биометрией или паролем</small>
+                </div>
+
+                <!-- Выбор языка приложения -->
+                <div class="tg-setting-row lang-setting-row">
+                    <div class="tg-setting-info">
+                        <span class="tg-title" data-i18n="app_language">Язык приложения</span>
+                        <span class="tg-desc" id="settingsCurrentLangText">🇷🇺 Русский</span>
+                    </div>
+                    <div class="lang-selector-wrapper settings-lang-selector">
+                        <button type="button" id="settingsLangBtn" class="lang-dropdown-btn" title="Выбор языка">
+                            <span id="settingsLangFlag">🇷🇺</span>
+                            <span class="lang-dropdown-arrow">▼</span>
+                        </button>
+                        <div id="settingsLangMenu" class="lang-dropdown-menu hidden">
+                            <button type="button" class="lang-option" data-lang="ru"><span class="flag">🇷🇺</span> Русский</button>
+                            <button type="button" class="lang-option" data-lang="uz"><span class="flag">🇺🇿</span> O'zbekcha</button>
+                            <button type="button" class="lang-option" data-lang="en"><span class="flag">🇬🇧</span> English</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Авто-геолокация -->
                 <div class="tg-setting-row">
                     <div class="tg-setting-info">
-                        <span class="tg-title">Авто-геолокация</span>
-                        <span class="tg-desc">Автоматически определять координаты при открытии отчета</span>
+                        <span class="tg-title" data-i18n="auto_geo_title">Авто-геолокация</span>
+                        <span class="tg-desc" data-i18n="auto_geo_desc">Автоматически определять координаты при открытии отчета</span>
                     </div>
                     <label class="toggle-switch">
                         <input type="checkbox" id="auto-geo-toggle-settings" checked>
@@ -497,8 +527,8 @@
                 <!-- Уведомления и Конфиденциальность -->
                 <div class="tg-setting-row">
                     <div class="tg-setting-info">
-                        <span class="tg-title">Push-уведомления</span>
-                        <span class="tg-desc">Оповещать об изменениях статусов ваших отчетов</span>
+                        <span class="tg-title" data-i18n="push_title">Push-уведомления</span>
+                        <span class="tg-desc" data-i18n="push_desc">Оповещать об изменениях статусов ваших отчетов</span>
                     </div>
                     <label class="toggle-switch">
                         <input type="checkbox" id="setting-push-toggle" checked>
@@ -508,14 +538,14 @@
 
                 <!-- Очистить историю и кэш -->
                 <div class="tg-setting-action" style="margin-top: 16px;">
-                    <button type="button" id="btnClearCache" class="btn-clear-cache">
+                    <button type="button" id="btnClearCache" class="btn-clear-cache" data-i18n="clear_cache">
                         🗑️ Очистить историю и кэш приложения
                     </button>
                 </div>
 
                 <!-- Выйти из аккаунта -->
                 <div class="tg-setting-action" style="margin-top: 10px;">
-                    <button type="button" id="btnTgLogout" class="btn-logout-profile" style="width: 100%;">
+                    <button type="button" id="btnTgLogout" class="btn-logout-profile" style="width: 100%;" data-i18n="logout_profile">
                         Выйти из аккаунта ↩
                     </button>
                 </div>
@@ -527,20 +557,20 @@
     <div id="auth-confirm-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div style="font-size: 2.2rem; margin-bottom: 8px;">🔒</div>
-            <h3>Подтверждение безопасности</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+            <h3 data-i18n="auth_confirm_title">Подтверждение безопасности</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;" data-i18n="auth_confirm_desc">
                 Для изменения Gmail введите текущий пароль доступа или сканируйте биометрию.
             </p>
 
             <div id="auth-confirm-error" class="alert error hidden" style="margin-bottom: 12px; font-size: 0.8rem;"></div>
 
             <div class="form-group-login" style="margin-bottom: 14px;">
-                <input type="password" id="auth-confirm-password" placeholder="Введите текущий пароль" class="tg-input" style="width: 100%;">
+                <input type="password" id="auth-confirm-password" data-i18n-placeholder="auth_confirm_placeholder" placeholder="Введите текущий пароль" class="tg-input" style="width: 100%;">
             </div>
 
             <div style="display: flex; gap: 10px;">
-                <button type="button" id="btn-auth-confirm-cancel" class="btn-safety-continue" style="flex: 1;">Отмена</button>
-                <button type="button" id="btn-auth-confirm-submit" class="btn-geo-allow" style="flex: 1;">Подтвердить</button>
+                <button type="button" id="btn-auth-confirm-cancel" class="btn-safety-continue" style="flex: 1;" data-i18n="btn_close">Отмена</button>
+                <button type="button" id="btn-auth-confirm-submit" class="btn-geo-allow" style="flex: 1;" data-i18n="btn_confirm">Подтвердить</button>
             </div>
         </div>
     </div>
@@ -549,8 +579,8 @@
     <div id="forgot-password-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div style="font-size: 2.2rem; margin-bottom: 8px;">📧</div>
-            <h3>Восстановление доступа</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+            <h3 data-i18n="forgot_title">Восстановление доступа</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;" data-i18n="forgot_desc">
                 Введите ваш зарегистрированный Gmail адрес для сброса пароля.
             </p>
 
@@ -561,8 +591,8 @@
             </div>
 
             <div style="display: flex; gap: 10px;">
-                <button type="button" id="btn-forgot-cancel" class="btn-safety-continue" style="flex: 1;">Закрыть</button>
-                <button type="button" id="btn-forgot-submit" class="btn-geo-allow" style="flex: 1;">Отправить</button>
+                <button type="button" id="btn-forgot-cancel" class="btn-safety-continue" style="flex: 1;" data-i18n="btn_close">Закрыть</button>
+                <button type="button" id="btn-forgot-submit" class="btn-geo-allow" style="flex: 1;" data-i18n="btn_send">Отправить</button>
             </div>
         </div>
     </div>
@@ -571,6 +601,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Leaflet Heatmap Layer Plugin -->
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="/i18n.js"></script>
     <script src="/app.js"></script>
 </body>
 </html>

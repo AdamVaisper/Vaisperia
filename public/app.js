@@ -68,7 +68,8 @@ document.addEventListener("DOMContentLoaded", () => {
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
             
-            const username = isLoggedIn ? (localStorage.getItem('vaisperia_username') || 'Гражданин') : 'Гость';
+            const rawUsername = isLoggedIn ? (localStorage.getItem('vaisperia_username') || 'Гражданин') : (window.t ? window.t('guest_user', 'Гость') : 'Гость');
+            const username = (rawUsername === 'Гражданин' && window.t) ? window.t('default_citizen', 'Гражданин') : rawUsername;
             const homeUserEl = document.getElementById('home-username');
             const profileUserTag = document.getElementById('profile-username-tag');
             
@@ -742,7 +743,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const hotzonesBtn = document.createElement('button');
         hotzonesBtn.type = 'button';
         hotzonesBtn.id = 'hotzones-btn';
-        hotzonesBtn.textContent = '🔥 Зоны скопления';
+        hotzonesBtn.textContent = window.t ? window.t('map_hotspots', '🔥 Зоны скопления') : '🔥 Зоны скопления';
         mapElement.appendChild(hotzonesBtn);
         L.DomEvent.disableClickPropagation(hotzonesBtn);
 
@@ -764,7 +765,7 @@ document.addEventListener("DOMContentLoaded", () => {
         statsPanel.id = 'stats-panel';
         statsPanel.innerHTML = `
             <div class="stats-header">
-                <h3>Статистика города</h3>
+                <h3>${window.t ? window.t('stat_city_title', 'Статистика города') : 'Статистика города'}</h3>
                 <button type="button" id="stats-close">&times;</button>
             </div>
             <div class="stats-body">
@@ -800,12 +801,28 @@ document.addEventListener("DOMContentLoaded", () => {
         const filtersContainer = document.createElement('div');
         filtersContainer.id = 'map-filters';
         filtersContainer.innerHTML = `
-            <button type="button" class="filter-btn active" data-filter="all">Все</button>
-            <button type="button" class="filter-btn" data-filter="new">Новые</button>
-            <button type="button" class="filter-btn" data-filter="in_progress">В работе</button>
-            <button type="button" class="filter-btn" data-filter="resolved">Решенные</button>
+            <button type="button" class="filter-btn active" data-filter="all">${window.t ? window.t('map_filter_all', 'Все') : 'Все'}</button>
+            <button type="button" class="filter-btn" data-filter="new">${window.t ? window.t('map_filter_new', 'Новые') : 'Новые'}</button>
+            <button type="button" class="filter-btn" data-filter="in_progress">${window.t ? window.t('map_filter_in_progress', 'В работе') : 'В работе'}</button>
+            <button type="button" class="filter-btn" data-filter="resolved">${window.t ? window.t('map_filter_resolved', 'Решенные') : 'Решенные'}</button>
         `;
         mapElement.appendChild(filtersContainer);
+
+        function updateMapUIElements() {
+            if (statsBtn) statsBtn.textContent = window.t ? window.t('map_statistics', 'Статистика') : 'Статистика';
+            if (hotzonesBtn) hotzonesBtn.textContent = window.t ? window.t('map_hotspots', '🔥 Зоны скопления') : '🔥 Зоны скопления';
+
+            const btnAll = filtersContainer.querySelector('.filter-btn[data-filter="all"]');
+            const btnNew = filtersContainer.querySelector('.filter-btn[data-filter="new"]');
+            const btnProg = filtersContainer.querySelector('.filter-btn[data-filter="in_progress"]');
+            const btnRes = filtersContainer.querySelector('.filter-btn[data-filter="resolved"]');
+
+            if (btnAll) btnAll.textContent = window.t ? window.t('map_filter_all', 'Все') : 'Все';
+            if (btnNew) btnNew.textContent = window.t ? window.t('map_filter_new', 'Новые') : 'Новые';
+            if (btnProg) btnProg.textContent = window.t ? window.t('map_filter_in_progress', 'В работе') : 'В работе';
+            if (btnRes) btnRes.textContent = window.t ? window.t('map_filter_resolved', 'Решенные') : 'Решенные';
+        }
+        window.updateMapUIElements = updateMapUIElements;
         L.DomEvent.disableClickPropagation(filtersContainer);
         L.DomEvent.disableClickPropagation(statsPanel);
 
@@ -2143,6 +2160,18 @@ document.addEventListener("DOMContentLoaded", () => {
             } finally {
                 btnForgotSubmit.disabled = false;
                 btnForgotSubmit.textContent = "Отправить";
+            }
+        });
+    }
+
+    // Подписка на автоматическую смену языка интерфейса
+    if (window.i18n && window.i18n.onLanguageChange) {
+        window.i18n.onLanguageChange(() => {
+            checkAuth();
+            renderShopItems();
+            loadProfileHistory();
+            if (window.updateMapUIElements) {
+                window.updateMapUIElements();
             }
         });
     }
