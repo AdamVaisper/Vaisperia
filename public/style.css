@@ -1931,3 +1931,282 @@ input:checked + .toggle-slider:before {
 .btn-geo-later:hover {
   background: #E2E8F0;
 }
+
+/* ==========================================================================
+   12. TELEGRAM-STYLE SETTINGS & AUTHOR AVATAR STYLES
+   ========================================================================== */
+
+/* Gear Button in Profile */
+.btn-settings-gear {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(241, 245, 249, 0.8);
+  border: 1px solid #E2E8F0;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  box-shadow: var(--shadow-sm);
+  z-index: 5;
+}
+
+.btn-settings-gear:hover {
+  background: #E2E8F0;
+  transform: rotate(45deg);
+}
+
+/* Telegram Settings Modal Card */
+.tg-settings-card {
+  max-width: 440px;
+  width: 95%;
+  border-radius: 20px;
+  padding: 20px;
+  text-align: left;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+}
+
+.tg-settings-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.tg-back-btn {
+  background: transparent;
+  border: none;
+  color: var(--eco-emerald);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: var(--transition-smooth);
+}
+
+.tg-back-btn:hover {
+  background: var(--eco-mint-light);
+}
+
+.tg-settings-header h3 {
+  font-family: var(--font-title);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--eco-forest);
+  margin: 0;
+}
+
+/* Avatar Upload Item */
+.avatar-upload-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--eco-mint-light);
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px dashed var(--eco-emerald);
+  margin-bottom: 16px;
+}
+
+.tg-avatar-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--eco-emerald);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.3rem;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+  position: relative;
+}
+
+.tg-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tg-avatar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.btn-upload-avatar {
+  background: var(--eco-emerald);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-block;
+  text-align: center;
+  transition: var(--transition-smooth);
+}
+
+.btn-upload-avatar:hover {
+  background: var(--eco-emerald-hover);
+}
+
+.avatar-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+/* Telegram Settings Group & Input Rows */
+.tg-setting-group {
+  margin-bottom: 16px;
+}
+
+.tg-setting-group label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.tg-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.tg-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #CBD5E1;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-family: var(--font-family);
+  color: var(--text-main);
+  background: #FFFFFF;
+  outline: none;
+  transition: var(--transition-smooth);
+}
+
+.tg-input:focus {
+  border-color: var(--eco-emerald);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.tg-btn-save {
+  padding: 10px 14px;
+  background: var(--eco-forest);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.tg-btn-save:hover {
+  background: var(--eco-emerald);
+}
+
+.tg-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.tg-setting-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.tg-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.tg-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Clear Cache Button */
+.btn-clear-cache {
+  width: 100%;
+  padding: 12px 14px;
+  background: #FFF7ED;
+  color: #C2410C;
+  border: 1px solid #FFEDD5;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  text-align: center;
+}
+
+.btn-clear-cache:hover {
+  background: #FFEDD5;
+}
+
+/* Map Author Badge */
+.sheet-author-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 20px;
+  padding: 4px 10px 4px 6px;
+  margin-top: 8px;
+  display: inline-flex;
+}
+
+.sheet-author-badge .author-avatar-img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.sheet-author-badge .author-avatar-letter {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--eco-emerald);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet-author-badge .author-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.sheet-author-badge.anon .author-name {
+  color: var(--text-muted);
+  font-weight: 600;
+}

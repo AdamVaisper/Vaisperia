@@ -20,6 +20,45 @@ document.addEventListener("DOMContentLoaded", () => {
     const profileLogoutBtn = document.getElementById('profileLogoutBtn');
     const btnGuestLogin = document.getElementById('btnGuestLogin');
 
+    function getUserAvatar(username) {
+        if (!username || username === 'Гость' || username === 'Анонимный гражданин') return '';
+        return localStorage.getItem(`vaisperia_avatar_${username}`) || '';
+    }
+
+    function updateProfileAvatarUI() {
+        const username = getCurrentUsername();
+        const avatarUrl = getUserAvatar(username);
+        
+        const profileImg = document.getElementById('profile-avatar-img');
+        const profileText = document.getElementById('profile-avatar-text');
+        const tgImg = document.getElementById('tg-avatar-img');
+        const tgText = document.getElementById('tg-avatar-text');
+        
+        if (avatarUrl) {
+            if (profileImg) {
+                profileImg.src = avatarUrl;
+                profileImg.classList.remove('hidden');
+            }
+            if (profileText) profileText.classList.add('hidden');
+            if (tgImg) {
+                tgImg.src = avatarUrl;
+                tgImg.classList.remove('hidden');
+            }
+            if (tgText) tgText.classList.add('hidden');
+        } else {
+            if (profileImg) profileImg.classList.add('hidden');
+            if (profileText) {
+                profileText.textContent = (username || 'ГР').substring(0, 2).toUpperCase();
+                profileText.classList.remove('hidden');
+            }
+            if (tgImg) tgImg.classList.add('hidden');
+            if (tgText) {
+                tgText.textContent = (username || 'ГР').substring(0, 2).toUpperCase();
+                tgText.classList.remove('hidden');
+            }
+        }
+    }
+
     function checkAuth() {
         const isLoggedIn = (localStorage.getItem('vaisperia_isLoggedIn') === 'true' || localStorage.getItem('isAuth') === 'true');
         const isGuest = (localStorage.getItem('vaisperia_isGuest') === 'true');
@@ -36,10 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (homeUserEl) homeUserEl.textContent = username;
             if (profileUserTag) profileUserTag.textContent = username;
 
-            const avatarSpan = document.querySelector('.avatar-circle span');
-            if (avatarSpan && username) {
-                avatarSpan.textContent = username.substring(0, 2).toUpperCase();
-            }
+            updateProfileAvatarUI();
 
             // Управление видимостью анонимного чекбокса (только для зарегистрированных)
             const anonWrapper = document.getElementById('anonymous-option-wrapper');
@@ -198,10 +234,11 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             hideBioError();
             const usernameInput = document.getElementById('username');
+            const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
 
-            if (!usernameInput || !usernameInput.value.trim() || !passwordInput || !passwordInput.value) {
-                showBioError("Заполните никнейм и пароль.");
+            if (!usernameInput || !usernameInput.value.trim() || !emailInput || !emailInput.value.trim() || !passwordInput || !passwordInput.value) {
+                showBioError("Заполните никнейм, Gmail и пароль.");
                 return;
             }
 
@@ -226,13 +263,15 @@ document.addEventListener("DOMContentLoaded", () => {
         btnSubmitBiometrics.addEventListener('click', async () => {
             hideBioError();
             const usernameInput = document.getElementById('username');
+            const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
 
             const username = usernameInput ? usernameInput.value.trim() : '';
+            const email = emailInput ? emailInput.value.trim() : '';
             const password = passwordInput ? passwordInput.value : '';
 
-            if (!username || !password) {
-                showBioError("Пожалуйста, заполните никнейм и пароль на Шаге 1.");
+            if (!username || !password || !email) {
+                showBioError("Пожалуйста, заполните никнейм, Gmail и пароль на Шаге 1.");
                 return;
             }
 
@@ -245,7 +284,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, faceVector })
+                    body: JSON.stringify({ username, password, email, faceVector })
                 });
 
                 const data = await response.json();
@@ -254,6 +293,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     localStorage.setItem('vaisperia_isLoggedIn', 'true');
                     localStorage.setItem('isAuth', 'true');
                     localStorage.setItem('vaisperia_username', username);
+                    localStorage.setItem(`vaisperia_email_${username}`, email);
                     localStorage.removeItem('vaisperia_isGuest');
                     stopWebcam();
                     btnSubmitBiometrics.disabled = false;
@@ -1018,12 +1058,40 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
 
+        // Helper for Author Badge with Avatar
+        const getAuthorHtml = (problem) => {
+            let authorName = problem.username || 'Анонимный гражданин';
+            let isAnon = (problem.is_anonymous == 1 || authorName === 'Анонимный гражданин' || authorName === 'Гость');
+            let avatarUrl = problem.user_avatar || (isAnon ? '' : getUserAvatar(authorName));
+
+            if (isAnon) {
+                return `
+                    <div class="sheet-author-badge anon">
+                        <span class="author-icon">👤</span>
+                        <span class="author-name">Анонимный гражданин</span>
+                    </div>
+                `;
+            }
+
+            let avatarMarkup = avatarUrl 
+                ? `<img src="${avatarUrl}" class="author-avatar-img" alt="${authorName}">`
+                : `<div class="author-avatar-letter">${authorName.substring(0, 2).toUpperCase()}</div>`;
+
+            return `
+                <div class="sheet-author-badge user">
+                    ${avatarMarkup}
+                    <span class="author-name">${authorName}</span>
+                </div>
+            `;
+        };
+
         // Генерация всплывающего окна
         const getPopupContent = (problem, state) => {
             let html = `<div class="popup-container">`;
             if (problem.photo_url) {
                 html += `<img src="${problem.photo_url}" class="popup-img" alt="Problem photo">`;
             }
+            html += getAuthorHtml(problem);
             html += `<div class="popup-details"><strong>Описание:</strong> ${problem.description}</div>`;
             
             let statusLabel = state.status === 'new' ? 'Новая' : (state.status === 'in_progress' ? 'В обработке' : 'Решена');
@@ -1078,6 +1146,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let html = `
                 ${imgHtml}
                 <div class="sheet-details">
+                    ${getAuthorHtml(problem)}
                     <div class="sheet-header">
                         <span class="status-badge ${state.status}">${statusLabel}</span>
                         <span class="sheet-date">📅 ${dateStr}</span>
@@ -1418,6 +1487,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (isLoggedIn) {
                 formData.append('username', currentUsername);
+                formData.append('userAvatar', getUserAvatar(currentUsername));
                 if (isAnonChecked) {
                     formData.append('isAnonymous', 'true');
                 }
@@ -1730,6 +1800,290 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.error("Error fetching operations history:", err);
                 listContainer.innerHTML = `<div class="history-placeholder error">Ошибка связки с базой SQLite.</div>`;
             });
+    }
+
+    // -----------------------------------------------------
+    // 8. TELEGRAM SETTINGS, NSFW CHECK & EMAIL PROTECTION
+    // -----------------------------------------------------
+
+    // Client-side NSFW & Safety Image Check
+    function validateImageSafety(file) {
+        return new Promise((resolve) => {
+            if (!file || !file.type || !file.type.startsWith('image/')) {
+                return resolve({ safe: false, reason: "Файл должен быть изображением (JPG, PNG, WEBP)." });
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                return resolve({ safe: false, reason: "Максимальный размер изображения — 5 МБ." });
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 100;
+                    canvas.height = 100;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 100, 100);
+                    
+                    const imgData = ctx.getImageData(0, 0, 100, 100);
+                    const pixels = imgData.data;
+                    let skinPixels = 0;
+                    let totalPixels = 100 * 100;
+
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        const r = pixels[i];
+                        const g = pixels[i + 1];
+                        const b = pixels[i + 2];
+                        
+                        if (r > 95 && g > 40 && b > 20 && 
+                            (Math.max(r, g, b) - Math.min(r, g, b) > 15) && 
+                            Math.abs(r - g) > 15 && r > g && r > b) {
+                            skinPixels++;
+                        }
+                    }
+
+                    const skinRatio = skinPixels / totalPixels;
+                    if (skinRatio > 0.65) {
+                        return resolve({ 
+                            safe: false, 
+                            reason: "🛡️ Изображение отклонено фильтром безопасности Vaisperia (высокий уровень открытого контента / NSFW)." 
+                        });
+                    }
+
+                    resolve({ safe: true, dataUrl: e.target.result });
+                };
+                img.onerror = () => resolve({ safe: false, reason: "Ошибка загрузки файла изображения." });
+                img.src = e.target.result;
+            };
+            reader.onerror = () => resolve({ safe: false, reason: "Ошибка чтения файла." });
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Telegram-Style Settings Modal Logic
+    const btnOpenSettingsGear = document.getElementById('btnOpenSettingsGear');
+    const tgSettingsModal = document.getElementById('telegram-settings-modal');
+    const closeTgSettingsBtn = document.getElementById('closeTgSettingsBtn');
+    const settingUsernameInput = document.getElementById('setting-username-input');
+    const settingEmailInput = document.getElementById('setting-email-input');
+    const btnSaveUsername = document.getElementById('btnSaveUsername');
+    const btnSaveEmail = document.getElementById('btnSaveEmail');
+    const avatarFileInput = document.getElementById('avatar-file-input');
+    const avatarErrorMsg = document.getElementById('avatar-error-msg');
+    const btnClearCache = document.getElementById('btnClearCache');
+    const btnTgLogout = document.getElementById('btnTgLogout');
+
+    if (btnOpenSettingsGear && tgSettingsModal) {
+        btnOpenSettingsGear.addEventListener('click', () => {
+            const currentUsername = getCurrentUsername();
+            if (settingUsernameInput) settingUsernameInput.value = currentUsername;
+            if (settingEmailInput) settingEmailInput.value = localStorage.getItem(`vaisperia_email_${currentUsername}`) || 'user@gmail.com';
+            updateProfileAvatarUI();
+            tgSettingsModal.classList.remove('hidden');
+        });
+    }
+
+    if (closeTgSettingsBtn && tgSettingsModal) {
+        closeTgSettingsBtn.addEventListener('click', () => {
+            tgSettingsModal.classList.add('hidden');
+        });
+    }
+
+    if (btnSaveUsername) {
+        btnSaveUsername.addEventListener('click', () => {
+            const oldUsername = getCurrentUsername();
+            const newName = settingUsernameInput ? settingUsernameInput.value.trim() : '';
+            if (!newName) return alert("Введите имя пользователя.");
+
+            if (oldUsername && oldUsername !== newName) {
+                const avatar = localStorage.getItem(`vaisperia_avatar_${oldUsername}`);
+                if (avatar) {
+                    localStorage.setItem(`vaisperia_avatar_${newName}`, avatar);
+                }
+                const coins = localStorage.getItem(`vaisperia_balance_${oldUsername}`);
+                if (coins !== null) {
+                    localStorage.setItem(`vaisperia_balance_${newName}`, coins);
+                }
+                const email = localStorage.getItem(`vaisperia_email_${oldUsername}`);
+                if (email) {
+                    localStorage.setItem(`vaisperia_email_${newName}`, email);
+                }
+            }
+
+            localStorage.setItem('vaisperia_username', newName);
+            checkAuth();
+            alert("Имя пользователя успешно обновлено!");
+        });
+    }
+
+    // Avatar Upload Listener with NSFW check
+    if (avatarFileInput) {
+        avatarFileInput.addEventListener('change', async () => {
+            const file = avatarFileInput.files[0];
+            if (!file) return;
+
+            if (avatarErrorMsg) {
+                avatarErrorMsg.classList.add('hidden');
+                avatarErrorMsg.textContent = '';
+            }
+
+            const result = await validateImageSafety(file);
+            if (!result.safe) {
+                if (avatarErrorMsg) {
+                    avatarErrorMsg.textContent = result.reason;
+                    avatarErrorMsg.classList.remove('hidden');
+                }
+                avatarFileInput.value = '';
+                return;
+            }
+
+            const username = getCurrentUsername();
+            localStorage.setItem(`vaisperia_avatar_${username}`, result.dataUrl);
+            updateProfileAvatarUI();
+            alert("Фото профиля успешно обновлено! 📸");
+        });
+    }
+
+    // Clear Cache & History Handler
+    if (btnClearCache) {
+        btnClearCache.addEventListener('click', () => {
+            const confirmClear = confirm("Вы уверены, что хотите очистить локальную историю отчетов и кэш приложения?");
+            if (confirmClear) {
+                for (let key in localStorage) {
+                    if (key.startsWith('problemState_') || key.startsWith('vaisperia_dailyPoints_')) {
+                        localStorage.removeItem(key);
+                    }
+                }
+                alert("Кэш приложения и история обращений очищены!");
+                checkAuth();
+            }
+        });
+    }
+
+    if (btnTgLogout) {
+        btnTgLogout.addEventListener('click', () => {
+            if (tgSettingsModal) tgSettingsModal.classList.add('hidden');
+            performLogout();
+        });
+    }
+
+    // Protection for Changing Email in Settings
+    let pendingNewEmail = '';
+    const authConfirmModal = document.getElementById('auth-confirm-modal');
+    const authConfirmPassword = document.getElementById('auth-confirm-password');
+    const authConfirmError = document.getElementById('auth-confirm-error');
+    const btnAuthConfirmCancel = document.getElementById('btn-auth-confirm-cancel');
+    const btnAuthConfirmSubmit = document.getElementById('btn-auth-confirm-submit');
+
+    if (btnSaveEmail) {
+        btnSaveEmail.addEventListener('click', () => {
+            const emailVal = settingEmailInput ? settingEmailInput.value.trim() : '';
+            if (!emailVal || !emailVal.includes('@')) {
+                return alert("Укажите корректный Gmail адрес.");
+            }
+            pendingNewEmail = emailVal;
+            if (authConfirmPassword) authConfirmPassword.value = '';
+            if (authConfirmError) {
+                authConfirmError.classList.add('hidden');
+                authConfirmError.textContent = '';
+            }
+            if (authConfirmModal) authConfirmModal.classList.remove('hidden');
+        });
+    }
+
+    if (btnAuthConfirmCancel && authConfirmModal) {
+        btnAuthConfirmCancel.addEventListener('click', () => {
+            authConfirmModal.classList.add('hidden');
+        });
+    }
+
+    if (btnAuthConfirmSubmit) {
+        btnAuthConfirmSubmit.addEventListener('click', () => {
+            const passVal = authConfirmPassword ? authConfirmPassword.value : '';
+            if (!passVal) {
+                if (authConfirmError) {
+                    authConfirmError.textContent = "Введите текущий пароль для подтверждения безопасности.";
+                    authConfirmError.classList.remove('hidden');
+                }
+                return;
+            }
+
+            const currentUsername = getCurrentUsername();
+            localStorage.setItem(`vaisperia_email_${currentUsername}`, pendingNewEmail);
+            if (authConfirmModal) authConfirmModal.classList.add('hidden');
+            alert(`Email успешно обновлен на: ${pendingNewEmail}!`);
+        });
+    }
+
+    // Forgot Password Modal Handlers
+    const btnOpenForgotPassword = document.getElementById('btnOpenForgotPassword');
+    const forgotModal = document.getElementById('forgot-password-modal');
+    const btnForgotCancel = document.getElementById('btn-forgot-cancel');
+    const btnForgotSubmit = document.getElementById('btn-forgot-submit');
+    const forgotEmailInput = document.getElementById('forgot-email-input');
+    const forgotMsg = document.getElementById('forgot-msg');
+
+    if (btnOpenForgotPassword) {
+        btnOpenForgotPassword.addEventListener('click', () => {
+            if (forgotModal) {
+                if (forgotEmailInput) forgotEmailInput.value = '';
+                if (forgotMsg) {
+                    forgotMsg.className = 'alert hidden';
+                    forgotMsg.textContent = '';
+                }
+                forgotModal.classList.remove('hidden');
+            }
+        });
+    }
+
+    if (btnForgotCancel && forgotModal) {
+        btnForgotCancel.addEventListener('click', () => {
+            forgotModal.classList.add('hidden');
+        });
+    }
+
+    if (btnForgotSubmit) {
+        btnForgotSubmit.addEventListener('click', async () => {
+            const emailVal = forgotEmailInput ? forgotEmailInput.value.trim() : '';
+            if (!emailVal) {
+                if (forgotMsg) {
+                    forgotMsg.textContent = "Введите ваш Gmail адрес.";
+                    forgotMsg.className = "alert error";
+                }
+                return;
+            }
+
+            try {
+                btnForgotSubmit.disabled = true;
+                btnForgotSubmit.textContent = "Отправка...";
+                const res = await fetch('/api/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailVal })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    if (forgotMsg) {
+                        forgotMsg.textContent = data.message;
+                        forgotMsg.className = "alert success";
+                    }
+                } else {
+                    if (forgotMsg) {
+                        forgotMsg.textContent = data.error || "Ошибка запроса восстановления.";
+                        forgotMsg.className = "alert error";
+                    }
+                }
+            } catch (err) {
+                if (forgotMsg) {
+                    forgotMsg.textContent = "Сетевой сбой при отправке запроса.";
+                    forgotMsg.className = "alert error";
+                }
+            } finally {
+                btnForgotSubmit.disabled = false;
+                btnForgotSubmit.textContent = "Отправить";
+            }
+        });
     }
 
     // Инициализация первой проверки авторизации

@@ -86,6 +86,7 @@ db.serialize(() => {
   });
 
   // Migrations: Add new metadata columns if missing
+  db.run(`ALTER TABLE users ADD COLUMN email TEXT`, () => {});
   db.run(`ALTER TABLE problems ADD COLUMN username TEXT`, () => {});
   db.run(`ALTER TABLE problems ADD COLUMN category TEXT`, () => {});
   db.run(`ALTER TABLE problems ADD COLUMN status TEXT DEFAULT 'new'`, () => {});
@@ -94,6 +95,7 @@ db.serialize(() => {
   db.run(`ALTER TABLE problems ADD COLUMN telegram_chat_id TEXT`, () => {});
   db.run(`ALTER TABLE problems ADD COLUMN is_anonymous INTEGER DEFAULT 0`, () => {});
   db.run(`ALTER TABLE problems ADD COLUMN user_id_name TEXT`, () => {});
+  db.run(`ALTER TABLE problems ADD COLUMN user_avatar TEXT`, () => {});
 
   // Preserve history for Adam_Vaisper: associate all legacy/unassigned records to Adam_Vaisper
   db.run(`UPDATE problems SET username = 'Adam_Vaisper' WHERE username IS NULL OR username = '' OR username = 'Muratbek_92'`, (err) => {
@@ -117,16 +119,16 @@ function calculateEuclideanDistance(v1, v2) {
 
 // API Endpoints
 
-// 1. Biometric User Registration
+// 1. Biometric User Registration (With Email)
 app.post('/api/register', (req, res) => {
-  const { username, password, faceVector } = req.body;
+  const { username, password, email, faceVector } = req.body;
 
-  if (!username || !password || !faceVector || !Array.isArray(faceVector)) {
-    return res.status(400).json({ error: 'Пожалуйста, заполните все поля и пройдите биометрию.' });
+  if (!username || !password || !email || !faceVector || !Array.isArray(faceVector)) {
+    return res.status(400).json({ error: 'Пожалуйста, заполните все поля (Никнейм, Gmail, Пароль) и пройдите биометрию.' });
   }
 
   // Check biometric uniqueness against existing vectors in SQLite
-  db.all('SELECT id, username, face_vector FROM users', [], (err, existingUsers) => {
+  db.all('SELECT id, username, email, face_vector FROM users', [], (err, existingUsers) => {
     if (err) {
       return res.status(500).json({ error: 'Ошибка проверки биометрии в базе данных.' });
     }
@@ -148,15 +150,15 @@ app.post('/api/register', (req, res) => {
 
     // Insert unique user into DB
     const stmt = db.prepare(`
-      INSERT INTO users (username, password, face_vector)
-      VALUES (?, ?, ?)
+      INSERT INTO users (username, password, email, face_vector)
+      VALUES (?, ?, ?, ?)
     `);
 
     const vectorStr = JSON.stringify(faceVector);
-    stmt.run([username.trim(), password, vectorStr], function(insertErr) {
+    stmt.run([username.trim(), password, email.trim().toLowerCase(), vectorStr], function(insertErr) {
       if (insertErr) {
         if (insertErr.message.includes('UNIQUE constraint failed')) {
-          return res.status(400).json({ error: 'Пользователь с таким именем уже существует!' });
+          return res.status(400).json({ error: 'Пользователь с таким именем или Email уже существует!' });
         }
         return res.status(500).json({ error: insertErr.message });
       }
@@ -165,10 +167,33 @@ app.post('/api/register', (req, res) => {
         success: true, 
         message: 'Регистрация и биометрический контроль успешно пройдены!',
         userId: this.lastID,
-        username: username.trim()
+        username: username.trim(),
+        email: email.trim().toLowerCase()
       });
     });
     stmt.finalize();
+  });
+});
+
+// Endpoint: Forgot password reset simulation
+app.post('/api/forgot-password', (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Укажите ваш зарегистрированный Gmail адрес.' });
+  }
+
+  db.get('SELECT id, username, email FROM users WHERE LOWER(email) = ?', [email.trim().toLowerCase()], (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка при доступе к базе данных.' });
+    }
+    if (!user) {
+      return res.status(404).json({ error: 'Пользователь с таким Gmail адресом не найден.' });
+    }
+
+    return res.json({
+      success: true,
+      message: `Ссылка для восстановления и подтверждения отправлена на ${email}! Проверьте ваш почтовый ящик.`
+    });
   });
 });
 
@@ -219,7 +244,7 @@ app.post('/api/problems', (req, res) => {
       return res.status(400).json({ error: err.message });
     }
 
-    const { description, latitude, longitude, username, category, isAnonymous } = req.body;
+    const { description, latitude, longitude, username, category, isAnonymous, userAvatar } = req.body;
     let photoUrl = null;
 
     if (req.file) {
@@ -234,13 +259,14 @@ app.post('/api/problems', (req, res) => {
     const realUser = (username && username.trim()) ? username.trim() : 'Adam_Vaisper';
     const displayUser = (isAnon || realUser === 'Гость') ? 'Анонимный гражданин' : realUser;
     const reportCategory = (category && category.trim()) ? category.trim() : 'Другое';
+    const avatarData = isAnon ? '' : (userAvatar || '');
 
     const stmt = db.prepare(`
-      INSERT INTO problems (photo_url, description, latitude, longitude, username, category, status, is_anonymous, user_id_name)
-      VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?)
+      INSERT INTO problems (photo_url, description, latitude, longitude, username, category, status, is_anonymous, user_id_name, user_avatar)
+      VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?, ?)
     `);
 
-    stmt.run([photoUrl, description, latitude, longitude, displayUser, reportCategory, isAnon ? 1 : 0, realUser], function(err) {
+    stmt.run([photoUrl, description, latitude, longitude, displayUser, reportCategory, isAnon ? 1 : 0, realUser, avatarData], function(err) {
       if (err) {
          res.status(500).json({ error: err.message });
          return;
@@ -256,6 +282,7 @@ app.post('/api/problems', (req, res) => {
         username: displayUser,
         category: reportCategory,
         status: 'new',
+        user_avatar: avatarData,
         timestamp: new Date().toISOString()
       };
 

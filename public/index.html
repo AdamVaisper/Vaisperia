@@ -43,9 +43,17 @@
                         <label for="username">Никнейм гражданина</label>
                         <input type="text" id="username" placeholder="Введите ваш никнейм" required>
                     </div>
+
+                    <div class="form-group-login">
+                        <label for="email">Электронная почта (Gmail)</label>
+                        <input type="email" id="email" placeholder="example@gmail.com" required>
+                    </div>
                     
                     <div class="form-group-login">
-                        <label for="password">Пароль доступа</label>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label for="password" style="margin-bottom: 0;">Пароль доступа</label>
+                            <button type="button" id="btnOpenForgotPassword" style="background: none; border: none; color: var(--eco-emerald); font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 0;">Забыли пароль?</button>
+                        </div>
                         <input type="password" id="password" placeholder="••••••••" required>
                     </div>
                     
@@ -283,10 +291,12 @@
             <section id="section-profile" class="tab-section hidden">
                 <div class="profile-wrapper">
                     <!-- Аватарка и Общие статы -->
-                    <div class="profile-card">
+                    <div class="profile-card" style="position: relative;">
+                        <button type="button" id="btnOpenSettingsGear" class="btn-settings-gear" title="Настройки профиля">⚙️</button>
                         <div class="profile-main-info">
-                            <div class="avatar-circle">
-                                <span>ГР</span>
+                            <div class="avatar-circle" id="profile-avatar-container">
+                                <span id="profile-avatar-text">ГР</span>
+                                <img id="profile-avatar-img" class="hidden" alt="Аватар профиля" />
                                 <div class="avatar-leaf">🌱</div>
                             </div>
                             <div class="profile-text">
@@ -425,13 +435,10 @@
             <h3 id="safety-modal-title">Экстренное предупреждение</h3>
             <p id="safety-modal-text" class="safety-modal-text">Предупреждение...</p>
             
-            <div class="safety-modal-actions">
-                <a id="safety-emergency-call-btn" href="tel:112" type="button" class="btn-emergency-call">
-                    📞 Позвонить в аварийную службу
-                </a>
-                <button type="button" id="safety-continue-btn" class="btn-safety-continue">
-                    Продолжить
-                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 4. Модальное окно запроса разрешения геолокации -->
     <div id="geo-modal" class="modal-overlay hidden">
         <div class="modal-card geo-modal-card">
@@ -442,6 +449,135 @@
             <div class="geo-modal-actions">
                 <button type="button" id="btn-geo-allow" class="btn-geo-allow">Разрешить</button>
                 <button type="button" id="btn-geo-later" class="btn-geo-later">Позже</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Модальное окно Настроек в стиле Telegram -->
+    <div id="telegram-settings-modal" class="modal-overlay hidden">
+        <div class="modal-card tg-settings-card">
+            <div class="tg-settings-header">
+                <button type="button" id="closeTgSettingsBtn" class="tg-back-btn">← Назад</button>
+                <h3>Настройки ⚙️</h3>
+            </div>
+
+            <div class="tg-settings-body">
+                <!-- Смена Аватарки -->
+                <div class="tg-setting-item avatar-upload-item">
+                    <div class="tg-avatar-preview">
+                        <span id="tg-avatar-text">ГР</span>
+                        <img id="tg-avatar-img" class="hidden" alt="Avatar Preview" />
+                    </div>
+                    <div class="tg-avatar-actions">
+                        <label for="avatar-file-input" class="btn-upload-avatar">
+                            📸 Изменить фото профиля
+                        </label>
+                        <input type="file" id="avatar-file-input" accept="image/*" class="hidden">
+                        <small class="avatar-hint">Загрузите из галереи (до 5 МБ, проверяется фильтрами безопасности)</small>
+                    </div>
+                </div>
+                <div id="avatar-error-msg" class="alert error hidden" style="margin-top: 8px; font-size: 0.8rem;"></div>
+
+                <!-- Смена Никнейма -->
+                <div class="tg-setting-group">
+                    <label>Имя пользователя (никнейм)</label>
+                    <div class="tg-input-row">
+                        <input type="text" id="setting-username-input" placeholder="Введите ваш ник" class="tg-input">
+                        <button type="button" id="btnSaveUsername" class="tg-btn-save">Сохранить</button>
+                    </div>
+                </div>
+
+                <!-- Смена Gmail -->
+                <div class="tg-setting-group">
+                    <label>Электронная почта (Gmail)</label>
+                    <div class="tg-input-row">
+                        <input type="email" id="setting-email-input" placeholder="example@gmail.com" class="tg-input">
+                        <button type="button" id="btnSaveEmail" class="tg-btn-save">Изменить</button>
+                    </div>
+                    <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">Требуется подтверждение биометрией или паролем</small>
+                </div>
+
+                <!-- Авто-геолокация -->
+                <div class="tg-setting-row">
+                    <div class="tg-setting-info">
+                        <span class="tg-title">Авто-геолокация</span>
+                        <span class="tg-desc">Автоматически определять координаты при открытии отчета</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-geo-toggle-settings" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <!-- Уведомления и Конфиденциальность -->
+                <div class="tg-setting-row">
+                    <div class="tg-setting-info">
+                        <span class="tg-title">Push-уведомления</span>
+                        <span class="tg-desc">Оповещать об изменениях статусов ваших отчетов</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="setting-push-toggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <!-- Очистить историю и кэш -->
+                <div class="tg-setting-action" style="margin-top: 16px;">
+                    <button type="button" id="btnClearCache" class="btn-clear-cache">
+                        🗑️ Очистить историю и кэш приложения
+                    </button>
+                </div>
+
+                <!-- Выйти из аккаунта -->
+                <div class="tg-setting-action" style="margin-top: 10px;">
+                    <button type="button" id="btnTgLogout" class="btn-logout-profile" style="width: 100%;">
+                        Выйти из аккаунта ↩
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Защитное модальное окно подтверждения изменения Email -->
+    <div id="auth-confirm-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">🔒</div>
+            <h3>Подтверждение безопасности</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+                Для изменения Gmail введите текущий пароль доступа или сканируйте биометрию.
+            </p>
+
+            <div id="auth-confirm-error" class="alert error hidden" style="margin-bottom: 12px; font-size: 0.8rem;"></div>
+
+            <div class="form-group-login" style="margin-bottom: 14px;">
+                <input type="password" id="auth-confirm-password" placeholder="Введите текущий пароль" class="tg-input" style="width: 100%;">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="button" id="btn-auth-confirm-cancel" class="btn-safety-continue" style="flex: 1;">Отмена</button>
+                <button type="button" id="btn-auth-confirm-submit" class="btn-geo-allow" style="flex: 1;">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. Модальное окно «Забыли пароль?» -->
+    <div id="forgot-password-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">📧</div>
+            <h3>Восстановление доступа</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+                Введите ваш зарегистрированный Gmail адрес для сброса пароля.
+            </p>
+
+            <div id="forgot-msg" class="alert hidden" style="margin-bottom: 12px; font-size: 0.82rem;"></div>
+
+            <div class="form-group-login" style="margin-bottom: 14px;">
+                <input type="email" id="forgot-email-input" placeholder="example@gmail.com" class="tg-input" style="width: 100%;">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="button" id="btn-forgot-cancel" class="btn-safety-continue" style="flex: 1;">Закрыть</button>
+                <button type="button" id="btn-forgot-submit" class="btn-geo-allow" style="flex: 1;">Отправить</button>
             </div>
         </div>
     </div>
