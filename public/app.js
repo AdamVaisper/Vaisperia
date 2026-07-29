@@ -1813,69 +1813,254 @@ document.addEventListener("DOMContentLoaded", () => {
     // -----------------------------------------------------
     // 6. МАГАЗИН И КУПОНЫ ПОЛЬЗОВАТЕЛЯ (Shop & Coupons)
     // -----------------------------------------------------
+    function getLocalizedProp(obj, prop, defaultVal = '') {
+        if (!obj) return defaultVal;
+        const val = obj[prop];
+        if (!val) return defaultVal;
+        if (typeof val === 'string') return val;
+        const lang = (window.i18n && typeof window.i18n.getCurrentLanguage === 'function') 
+            ? window.i18n.getCurrentLanguage() 
+            : 'ru';
+        return val[lang] || val['ru'] || val['en'] || defaultVal;
+    }
+
     const shopPartners = [
         {
             id: 'evos',
-            name: 'EVOS',
+            name: { ru: 'EVOS', uz: 'EVOS', en: 'EVOS' },
             category: 'food',
             emoji: '🥙',
-            tagline: 'Быстрое и вкусное эко-питание',
+            tagline: {
+                ru: 'Быстрое и вкусное эко-питание',
+                uz: 'Tezkor va mazali eko-taomlar',
+                en: 'Fast and tasty eco-food'
+            },
             offers: [
-                { id: 'evos_10', title: 'Скидка 10% на чек (50k-100k сум)', price: 100, partner: 'EVOS', emoji: '🎟️' },
-                { id: 'evos_20', title: 'Скидка 20% на чек от 100k сум', price: 250, partner: 'EVOS', emoji: '🎁' }
+                {
+                    id: 'evos_10',
+                    title: {
+                        ru: 'Скидка 10% на чек (50k-100k сум)',
+                        uz: '50k-100k so\'mlik chekka 10% chegirma',
+                        en: '10% off receipt (50k-100k UZS)'
+                    },
+                    disclaimer: {
+                        ru: '1 купон на 1 чек. Не суммируется.',
+                        uz: '1 chek uchun 1 kupon. Boshqa aksiyalar bilan qo\'shilmaydi.',
+                        en: '1 coupon per receipt. Non-stackable.'
+                    },
+                    price: 100,
+                    partnerId: 'evos',
+                    emoji: '🎟️'
+                },
+                {
+                    id: 'evos_20',
+                    title: {
+                        ru: 'Скидка 20% на чек от 100k сум',
+                        uz: '100k so\'mdan yuqori chekka 20% chegirma',
+                        en: '20% off receipt over 100k UZS'
+                    },
+                    disclaimer: {
+                        ru: '1 купон на 1 чек. Не суммируется.',
+                        uz: '1 chek uchun 1 kupon. Boshqa aksiyalar bilan qo\'shilmaydi.',
+                        en: '1 coupon per receipt. Non-stackable.'
+                    },
+                    price: 250,
+                    partnerId: 'evos',
+                    emoji: '🎁'
+                }
             ]
         },
         {
             id: 'sofra',
-            name: 'Sofra',
+            name: { ru: 'Sofra', uz: 'Sofra', en: 'Sofra' },
             category: 'food',
             emoji: '🍕',
-            tagline: 'Восточная и европейская кухня',
+            tagline: {
+                ru: 'Восточная и европейская кухня',
+                uz: 'Sharq va Yevropa taomlari',
+                en: 'Eastern and European cuisine'
+            },
             offers: [
-                { id: 'sofra_15', title: 'Скидка 15% на весь чек', price: 150, partner: 'Sofra', emoji: '🍕' },
-                { id: 'sofra_drink', title: 'Бесплатный напиток к комбо', price: 80, partner: 'Sofra', emoji: '🥤' }
+                {
+                    id: 'sofra_15',
+                    title: {
+                        ru: 'Скидка 15% на весь чек',
+                        uz: 'Barcha chekka 15% chegirma',
+                        en: '15% off total receipt'
+                    },
+                    disclaimer: {
+                        ru: '1 купон на 1 чек. Не суммируется.',
+                        uz: '1 chek uchun 1 kupon. Boshqa aksiyalar bilan qo\'shilmaydi.',
+                        en: '1 coupon per receipt. Non-stackable.'
+                    },
+                    price: 150,
+                    partnerId: 'sofra',
+                    emoji: '🍕'
+                },
+                {
+                    id: 'sofra_drink',
+                    title: {
+                        ru: 'Бесплатный напиток к комбо',
+                        uz: 'Komboga bepul ichimlik',
+                        en: 'Free beverage with any combo'
+                    },
+                    disclaimer: {
+                        ru: '1 купон на 1 чек. Не суммируется.',
+                        uz: '1 chek uchun 1 kupon. Boshqa aksiyalar билан qo\'shilmaydi.',
+                        en: '1 coupon per receipt. Non-stackable.'
+                    },
+                    price: 80,
+                    partnerId: 'sofra',
+                    emoji: '🥤'
+                }
             ]
         },
         {
             id: 'grand_lavash',
-            name: 'Grand Lavash',
+            name: { ru: 'Grand Lavash', uz: 'Grand Lavash', en: 'Grand Lavash' },
             category: 'food',
             emoji: '🌯',
-            tagline: 'Сочные лаваши и гриль',
+            tagline: {
+                ru: 'Сочные лаваши и гриль',
+                uz: 'Sersuv lavashlar va grill',
+                en: 'Juicy lavash and grill'
+            },
             offers: [
-                { id: 'gl_10', title: 'Скидка 10% на любой лаваш', price: 90, partner: 'Grand Lavash', emoji: '🌯' }
+                {
+                    id: 'gl_10',
+                    title: {
+                        ru: 'Скидка 10% на любой лаваш',
+                        uz: 'Har qanday lavashga 10% chegirma',
+                        en: '10% off any lavash'
+                    },
+                    disclaimer: {
+                        ru: '1 купон на 1 чек. Не суммируется.',
+                        uz: '1 chek uchun 1 kupon. Boshqa aksiyalar bilan qo\'shilmaydi.',
+                        en: '1 coupon per receipt. Non-stackable.'
+                    },
+                    price: 90,
+                    partnerId: 'grand_lavash',
+                    emoji: '🌯'
+                }
             ]
         },
         {
             id: 'ecobook',
-            name: 'EcoBook',
+            name: { ru: 'EcoBook', uz: 'EcoBook', en: 'EcoBook' },
             category: 'education',
             emoji: '📚',
-            tagline: 'Книги и эко-канцелярия',
+            tagline: {
+                ru: 'Книги и эко-канцелярия',
+                uz: 'Kitoblar va eko-kantselyariya',
+                en: 'Books and eco-stationery'
+            },
             offers: [
-                { id: 'eb_15', title: 'Скидка 15% на эко-литературу', price: 120, partner: 'EcoBook', emoji: '📚' },
-                { id: 'eb_30', title: 'Скидка 30% на абонемент читателя', price: 300, partner: 'EcoBook', emoji: '🎟️' }
+                {
+                    id: 'eb_15',
+                    title: {
+                        ru: 'Скидка 15% на эко-литературу',
+                        uz: 'Eko-adabiyotlarga 15% chegirma',
+                        en: '15% off eco-literature'
+                    },
+                    disclaimer: {
+                        ru: '1 купон на 1 чек. Не суммируется.',
+                        uz: '1 chek uchun 1 kupon. Boshqa aksiyalar bilan qo\'shilmaydi.',
+                        en: '1 coupon per receipt. Non-stackable.'
+                    },
+                    price: 120,
+                    partnerId: 'ecobook',
+                    emoji: '📚'
+                },
+                {
+                    id: 'eb_30',
+                    title: {
+                        ru: 'Скидка 30% на абонемент читателя',
+                        uz: 'Kitobxon obunasiga 30% chegirma',
+                        en: '30% off monthly reading pass'
+                    },
+                    disclaimer: {
+                        ru: '1 купон на 1 чек. Не суммируется.',
+                        uz: '1 chek uchun 1 kupon. Boshqa aksiyalar bilan qo\'shilmaydi.',
+                        en: '1 coupon per receipt. Non-stackable.'
+                    },
+                    price: 300,
+                    partnerId: 'ecobook',
+                    emoji: '🎟️'
+                }
             ]
         },
         {
             id: 'city_gym',
-            name: 'City Gym',
+            name: { ru: 'City Gym', uz: 'City Gym', en: 'City Gym' },
             category: 'sport',
             emoji: '🏋️‍♂️',
-            tagline: 'Фитнес-центр и тренажерный зал',
+            tagline: {
+                ru: 'Фитнес-центр и тренажерный зал',
+                uz: 'Fitnes markazi va trenajyor zali',
+                en: 'Fitness center & gym'
+            },
             offers: [
-                { id: 'cg_20', title: 'Скидка 20% на месячный абонемент', price: 400, partner: 'City Gym', emoji: '🏋️‍♂️' },
-                { id: 'cg_personal', title: '1 Бесплатная персональная тренировка', price: 200, partner: 'City Gym', emoji: '💪' }
+                {
+                    id: 'cg_20',
+                    title: {
+                        ru: 'Скидка 20% на месячный абонемент',
+                        uz: 'Oylik obunaga 20% chegirma',
+                        en: '20% off 1-month fitness pass'
+                    },
+                    disclaimer: {
+                        ru: '1 купон на 1 чек. Не суммируется.',
+                        uz: '1 chek uchun 1 kupon. Boshqa aksiyalar bilan qo\'shilmaydi.',
+                        en: '1 coupon per receipt. Non-stackable.'
+                    },
+                    price: 400,
+                    partnerId: 'city_gym',
+                    emoji: '🏋️‍♂️'
+                },
+                {
+                    id: 'cg_personal',
+                    title: {
+                        ru: '1 Бесплатная персональная тренировка',
+                        uz: '1 ta bepul shaxsiy mashg\'ulot',
+                        en: '1 free personal training session'
+                    },
+                    disclaimer: {
+                        ru: '1 купон на 1 чек. Не суммируется.',
+                        uz: '1 chek uchun 1 kupon. Boshqa aksiyalar bilan qo\'shilmaydi.',
+                        en: '1 coupon per receipt. Non-stackable.'
+                    },
+                    price: 200,
+                    partnerId: 'city_gym',
+                    emoji: '💪'
+                }
             ]
         },
         {
             id: 'eco_wear',
-            name: 'EcoWear',
+            name: { ru: 'EcoWear', uz: 'EcoWear', en: 'EcoWear' },
             category: 'clothing',
             emoji: '👕',
-            tagline: 'Одежда из 100% органического хлопка',
+            tagline: {
+                ru: 'Одежда из 100% органического хлопка',
+                uz: '100% organik paxtadan kiyimlar',
+                en: '100% organic cotton clothing'
+            },
             offers: [
-                { id: 'ew_15', title: 'Скидка 15% на эко-футболки', price: 180, partner: 'EcoWear', emoji: '👕' }
+                {
+                    id: 'ew_15',
+                    title: {
+                        ru: 'Скидка 15% на эко-футболки',
+                        uz: 'Eko-futbolkalarga 15% chegirma',
+                        en: '15% off eco t-shirts'
+                    },
+                    disclaimer: {
+                        ru: '1 купон на 1 чек. Не суммируется.',
+                        uz: '1 chek uchun 1 kupon. Boshqa aksiyalar bilan qo\'shilmaydi.',
+                        en: '1 coupon per receipt. Non-stackable.'
+                    },
+                    price: 180,
+                    partnerId: 'eco_wear',
+                    emoji: '👕'
+                }
             ]
         }
     ];
@@ -1913,7 +2098,8 @@ document.addEventListener("DOMContentLoaded", () => {
             : shopPartners.filter(p => p.category === category);
 
         if (filtered.length === 0) {
-            container.innerHTML = `<div class="history-placeholder">Нет партнеров в этой категории</div>`;
+            const emptyMsg = window.t ? window.t('empty_category_partners', 'Нет партнеров в этой категории') : 'Нет партнеров в этой категории';
+            container.innerHTML = `<div class="history-placeholder">${emptyMsg}</div>`;
             return;
         }
 
@@ -1921,10 +2107,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const card = document.createElement('div');
             card.className = 'partner-card';
             const offersText = partner.offers.length + " " + (window.t ? window.t('offers_count_suffix', 'предложений') : 'предложений');
+            const nameStr = getLocalizedProp(partner, 'name');
+            const taglineStr = getLocalizedProp(partner, 'tagline');
             card.innerHTML = `
                 <div class="partner-icon">${partner.emoji}</div>
-                <div class="partner-name">${partner.name}</div>
-                <div class="partner-tag">${partner.tagline}</div>
+                <div class="partner-name">${nameStr}</div>
+                <div class="partner-tag">${taglineStr}</div>
                 <div class="partner-offers-count">${offersText}</div>
             `;
             card.addEventListener('click', () => {
@@ -1945,11 +2133,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (offersWrapper) offersWrapper.classList.remove('hidden');
 
         if (headerInfo) {
+            const nameStr = getLocalizedProp(partner, 'name');
+            const taglineStr = getLocalizedProp(partner, 'tagline');
             headerInfo.innerHTML = `
                 <div style="font-size: 2.2rem;">${partner.emoji}</div>
                 <div>
-                    <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--eco-forest); margin-bottom: 2px;">${partner.name}</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">${partner.tagline}</p>
+                    <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--eco-forest); margin-bottom: 2px;">${nameStr}</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">${taglineStr}</p>
                 </div>
             `;
         }
@@ -1975,7 +2165,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         container.innerHTML = '';
         const balance = getCoins();
-        const disclaimerText = window.t ? window.t('shop_terms_disclaimer', '1 купон на 1 чек. Не суммируется с другими скидками.') : '1 купон на 1 чек. Не суммируется с другими скидками.';
 
         partner.offers.forEach(offer => {
             const isAffordable = balance >= offer.price;
@@ -1986,11 +2175,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? (window.t ? window.t('btn_get_reward', 'Получить') : 'Получить')
                 : (window.t ? window.t('btn_not_enough_coins', 'Мало баллов') : 'Мало баллов');
 
+            const titleStr = getLocalizedProp(offer, 'title');
+            const disclaimerStr = getLocalizedProp(offer, 'disclaimer', window.t ? window.t('shop_terms_disclaimer', '1 купон на 1 чек. Не суммируется.') : '');
+
             itemCard.innerHTML = `
                 <div class="shop-item-icon">${offer.emoji}</div>
                 <div class="shop-item-info">
-                    <h4>${offer.title}</h4>
-                    <div class="offer-disclaimer">ℹ️ ${disclaimerText}</div>
+                    <h4>${titleStr}</h4>
+                    <div class="offer-disclaimer">ℹ️ ${disclaimerStr}</div>
                     <div class="shop-item-footer">
                         <span class="shop-price">${offer.price} 🍃</span>
                         <button type="button" class="btn-buy-reward" data-id="${offer.id}">
@@ -2038,7 +2230,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (descText) {
             const template = window.t ? window.t('shop_confirm_desc', 'Вы действительно хотите обменять {coins} эко-коинов на «{title}»?') : 'Вы действительно хотите обменять {coins} эко-коинов на «{title}»?';
-            descText.textContent = template.replace('{coins}', offer.price).replace('{title}', offer.title);
+            const offerTitleStr = getLocalizedProp(offer, 'title');
+            descText.textContent = template.replace('{coins}', offer.price).replace('{title}', offerTitleStr);
         }
 
         if (balance < offer.price) {
@@ -2080,13 +2273,17 @@ document.addEventListener("DOMContentLoaded", () => {
             // Списываем баллы
             addCoins(-offer.price);
 
-            // Создаем купон
-            const randCode = "VS-" + partner.name.toUpperCase().replace(/\s+/g, '').substring(0, 4) + "-" + Math.floor(1000 + Math.random() * 9000);
+            // Создаем купон со структурой локализации
+            const partnerNameEn = getLocalizedProp(partner, 'name', 'EVOS');
+            const codePrefix = partnerNameEn.toUpperCase().replace(/\s+/g, '').substring(0, 4);
+            const randCode = "VS-" + codePrefix + "-" + Math.floor(1000 + Math.random() * 9000);
+            
             const coupon = {
                 id: 'coupon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                partnerName: partner.name,
+                partnerName: partner.name, // object {ru, uz, en} or string
                 partnerEmoji: partner.emoji,
-                offerTitle: offer.title,
+                offerTitle: offer.title,   // object {ru, uz, en} or string
+                disclaimer: offer.disclaimer, // object {ru, uz, en} or string
                 code: randCode,
                 purchasedAt: Date.now()
             };
@@ -2100,7 +2297,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const qrName = document.getElementById('qr-coupon-item-name');
             const qrCode = document.getElementById('qr-coupon-code');
             if (qrModal && qrName && qrCode) {
-                qrName.textContent = `${partner.name}: ${offer.title}`;
+                const pNameStr = getLocalizedProp(partner, 'name');
+                const oTitleStr = getLocalizedProp(offer, 'title');
+                qrName.textContent = `${pNameStr}: ${oTitleStr}`;
                 qrCode.textContent = randCode;
                 qrModal.classList.remove('hidden');
             }
@@ -2164,17 +2363,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
         container.innerHTML = '';
         const useBtnText = window.t ? window.t('btn_use_coupon', 'Использовать купон') : 'Использовать купон';
-        const disclaimerText = window.t ? window.t('shop_terms_disclaimer', '1 купон на 1 чек. Не суммируется с другими скидками.') : '1 купон на 1 чек. Не суммируется с другими скидками.';
+        const defaultDisclaimer = window.t ? window.t('shop_terms_disclaimer', '1 купон на 1 чек. Не суммируется.') : '1 купон на 1 чек. Не суммируется.';
+        const qrInstructionText = window.t ? window.t('show_qr_instruction', 'Покажите QR-код кассиру:') : 'Покажите QR-код кассиру:';
 
         coupons.forEach(coupon => {
+            const partnerNameStr = getLocalizedProp(coupon, 'partnerName', 'Partner');
+            const offerTitleStr = getLocalizedProp(coupon, 'offerTitle', 'Offer');
+            const disclaimerStr = getLocalizedProp(coupon, 'disclaimer', defaultDisclaimer);
+
             const card = document.createElement('div');
             card.className = 'coupon-card';
             card.innerHTML = `
                 <div class="coupon-header">
-                    <span class="coupon-partner"><span>${coupon.partnerEmoji || '🎁'}</span> ${coupon.partnerName}</span>
+                    <span class="coupon-partner"><span>${coupon.partnerEmoji || '🎁'}</span> ${partnerNameStr}</span>
                     <span class="coupon-code-tag">${coupon.code}</span>
                 </div>
-                <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">${coupon.offerTitle}</div>
+                <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">${offerTitleStr}</div>
                 <div class="coupon-qr-box">
                     <svg class="coupon-qr-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect width="100" height="100" rx="8" fill="#F8FAFC"/>
@@ -2196,8 +2400,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         <rect x="65" y="74" width="25" height="16" fill="#10B981"/>
                     </svg>
                     <div class="coupon-terms">
-                        <strong>Покажите QR-код кассиру:</strong><br>
-                        ${disclaimerText}
+                        <strong>${qrInstructionText}</strong><br>
+                        ${disclaimerStr}
                     </div>
                 </div>
                 <button type="button" class="btn-use-coupon" data-id="${coupon.id}">
@@ -2217,6 +2421,15 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // Слушатель смены языка в i18n
+    if (window.i18n && typeof window.i18n.onLanguageChange === 'function') {
+        window.i18n.onLanguageChange(() => {
+            renderShopItems();
+            renderMyCoupons();
+        });
+    }
+
 
 
 

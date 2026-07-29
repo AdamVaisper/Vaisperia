@@ -133,6 +133,8 @@
             btn_use_coupon: "Использовать купон",
             msg_coupon_used: "Купон успешно применен и погашен!",
             offers_count_suffix: "предложений",
+            show_qr_instruction: "Покажите QR-код кассиру:",
+            empty_category_partners: "Нет партнеров в этой категории",
             
             profile_coins: "Коинов",
             profile_reports: "Заявок",
@@ -346,6 +348,8 @@
             btn_use_coupon: "Kuponni ishlatish",
             msg_coupon_used: "Kupon muvaffaqiyatli ishlatildi!",
             offers_count_suffix: "takliflar",
+            show_qr_instruction: "Kassirga QR-kodni ko'rsating:",
+            empty_category_partners: "Ushbu kategoriyada hamkorlar yo'q",
             
             profile_coins: "Koinlar",
             profile_reports: "Arizalar",
@@ -559,6 +563,8 @@
             btn_use_coupon: "Use Coupon",
             msg_coupon_used: "Coupon successfully redeemed!",
             offers_count_suffix: "offers",
+            show_qr_instruction: "Show QR code at checkout:",
+            empty_category_partners: "No partners in this category",
             
             profile_coins: "Coins",
             profile_reports: "Reports",
