@@ -96,6 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
             initAutoGeoToggle();
             // Загрузка динамики
             loadProfileHistory();
+            renderMyCoupons();
             renderShopItems();
             if (window.fetchProblemsAndDraw) {
                 window.fetchProblemsAndDraw();
@@ -641,6 +642,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (targetTab === 'profile') {
                 initAutoGeoToggle();
                 loadProfileHistory();
+                renderMyCoupons();
             }
 
             // При открытии магазина обновляем товары
@@ -1809,94 +1811,413 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // -----------------------------------------------------
-    // 6. МАГАЗИН ЭКО-НАГРАД (Rewards shop logic)
+    // 6. МАГАЗИН И КУПОНЫ ПОЛЬЗОВАТЕЛЯ (Shop & Coupons)
     // -----------------------------------------------------
-    const rewardProducts = [
-        { id: 1, nameKey: "coupon_10", descKey: "coupon_10_desc", defaultName: "Купон: Скидка 10%", price: 100, defaultDesc: "Скидка 10% на любые чеки до 50 000 сум у партнеров.", emoji: "🎟️" },
-        { id: 2, nameKey: "coupon_25", descKey: "coupon_25_desc", defaultName: "Купон: Скидка 25%", price: 400, defaultDesc: "Скидка 25% на любые чеки до 50 000 сум у партнеров.", emoji: "🎁" },
-        { id: 3, nameKey: "coupon_50", descKey: "coupon_50_desc", defaultName: "Купон: Скидка 50%", price: 1000, defaultDesc: "Скидка 50% на любые чеки до 50 000 сум у партнеров.", emoji: "🔥" }
+    const shopPartners = [
+        {
+            id: 'evos',
+            name: 'EVOS',
+            category: 'food',
+            emoji: '🥙',
+            tagline: 'Быстрое и вкусное эко-питание',
+            offers: [
+                { id: 'evos_10', title: 'Скидка 10% на чек (50k-100k сум)', price: 100, partner: 'EVOS', emoji: '🎟️' },
+                { id: 'evos_20', title: 'Скидка 20% на чек от 100k сум', price: 250, partner: 'EVOS', emoji: '🎁' }
+            ]
+        },
+        {
+            id: 'sofra',
+            name: 'Sofra',
+            category: 'food',
+            emoji: '🍕',
+            tagline: 'Восточная и европейская кухня',
+            offers: [
+                { id: 'sofra_15', title: 'Скидка 15% на весь чек', price: 150, partner: 'Sofra', emoji: '🍕' },
+                { id: 'sofra_drink', title: 'Бесплатный напиток к комбо', price: 80, partner: 'Sofra', emoji: '🥤' }
+            ]
+        },
+        {
+            id: 'grand_lavash',
+            name: 'Grand Lavash',
+            category: 'food',
+            emoji: '🌯',
+            tagline: 'Сочные лаваши и гриль',
+            offers: [
+                { id: 'gl_10', title: 'Скидка 10% на любой лаваш', price: 90, partner: 'Grand Lavash', emoji: '🌯' }
+            ]
+        },
+        {
+            id: 'ecobook',
+            name: 'EcoBook',
+            category: 'education',
+            emoji: '📚',
+            tagline: 'Книги и эко-канцелярия',
+            offers: [
+                { id: 'eb_15', title: 'Скидка 15% на эко-литературу', price: 120, partner: 'EcoBook', emoji: '📚' },
+                { id: 'eb_30', title: 'Скидка 30% на абонемент читателя', price: 300, partner: 'EcoBook', emoji: '🎟️' }
+            ]
+        },
+        {
+            id: 'city_gym',
+            name: 'City Gym',
+            category: 'sport',
+            emoji: '🏋️‍♂️',
+            tagline: 'Фитнес-центр и тренажерный зал',
+            offers: [
+                { id: 'cg_20', title: 'Скидка 20% на месячный абонемент', price: 400, partner: 'City Gym', emoji: '🏋️‍♂️' },
+                { id: 'cg_personal', title: '1 Бесплатная персональная тренировка', price: 200, partner: 'City Gym', emoji: '💪' }
+            ]
+        },
+        {
+            id: 'eco_wear',
+            name: 'EcoWear',
+            category: 'clothing',
+            emoji: '👕',
+            tagline: 'Одежда из 100% органического хлопка',
+            offers: [
+                { id: 'ew_15', title: 'Скидка 15% на эко-футболки', price: 180, partner: 'EcoWear', emoji: '👕' }
+            ]
+        }
     ];
 
-    function renderShopItems() {
+    let currentShopCategory = 'all';
+    let currentActivePartner = null;
+    let pendingPurchaseOffer = null;
+
+    // Инициализация чипсов категорий
+    const categoryChips = document.querySelectorAll('.shop-chip');
+    categoryChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            categoryChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            currentShopCategory = chip.dataset.category || 'all';
+            
+            // Сбрасываем детальный просмотр и показываем сетку партнеров
+            const offersWrapper = document.getElementById('shop-offers-container');
+            const partnersGrid = document.getElementById('shop-partners-container');
+            if (offersWrapper) offersWrapper.classList.add('hidden');
+            if (partnersGrid) partnersGrid.classList.remove('hidden');
+            
+            renderShopPartners(currentShopCategory);
+        });
+    });
+
+    // Отрисовка партнеров по категории
+    function renderShopPartners(category = 'all') {
+        const container = document.getElementById('shop-partners-container');
+        if (!container) return;
+
+        container.innerHTML = '';
+        const filtered = category === 'all' 
+            ? shopPartners 
+            : shopPartners.filter(p => p.category === category);
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="history-placeholder">Нет партнеров в этой категории</div>`;
+            return;
+        }
+
+        filtered.forEach(partner => {
+            const card = document.createElement('div');
+            card.className = 'partner-card';
+            const offersText = partner.offers.length + " " + (window.t ? window.t('offers_count_suffix', 'предложений') : 'предложений');
+            card.innerHTML = `
+                <div class="partner-icon">${partner.emoji}</div>
+                <div class="partner-name">${partner.name}</div>
+                <div class="partner-tag">${partner.tagline}</div>
+                <div class="partner-offers-count">${offersText}</div>
+            `;
+            card.addEventListener('click', () => {
+                openPartnerOffers(partner);
+            });
+            container.appendChild(card);
+        });
+    }
+
+    // Открытие списка предложений конкретного партнера
+    function openPartnerOffers(partner) {
+        currentActivePartner = partner;
+        const partnersGrid = document.getElementById('shop-partners-container');
+        const offersWrapper = document.getElementById('shop-offers-container');
+        const headerInfo = document.getElementById('partner-header-info');
+
+        if (partnersGrid) partnersGrid.classList.add('hidden');
+        if (offersWrapper) offersWrapper.classList.remove('hidden');
+
+        if (headerInfo) {
+            headerInfo.innerHTML = `
+                <div style="font-size: 2.2rem;">${partner.emoji}</div>
+                <div>
+                    <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--eco-forest); margin-bottom: 2px;">${partner.name}</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">${partner.tagline}</p>
+                </div>
+            `;
+        }
+
+        renderPartnerOffers(partner);
+    }
+
+    // Кнопка Назад к партнерам
+    const btnBackPartners = document.getElementById('btnBackToPartners');
+    if (btnBackPartners) {
+        btnBackPartners.addEventListener('click', () => {
+            const partnersGrid = document.getElementById('shop-partners-container');
+            const offersWrapper = document.getElementById('shop-offers-container');
+            if (offersWrapper) offersWrapper.classList.add('hidden');
+            if (partnersGrid) partnersGrid.classList.remove('hidden');
+        });
+    }
+
+    // Отрисовка предложений партнера
+    function renderPartnerOffers(partner) {
         const container = document.getElementById('shop-items-container');
         if (!container) return;
-        
-        container.innerHTML = "";
+
+        container.innerHTML = '';
         const balance = getCoins();
-        
-        rewardProducts.forEach(prod => {
-            const isAffordable = balance >= prod.price;
+        const disclaimerText = window.t ? window.t('shop_terms_disclaimer', '1 купон на 1 чек. Не суммируется с другими скидками.') : '1 купон на 1 чек. Не суммируется с другими скидками.';
+
+        partner.offers.forEach(offer => {
+            const isAffordable = balance >= offer.price;
             const itemCard = document.createElement('div');
             itemCard.className = `shop-item-card ${isAffordable ? '' : 'disabled'}`;
-            
-            const prodName = window.t ? window.t(prod.nameKey, prod.defaultName) : prod.defaultName;
-            const prodDesc = window.t ? window.t(prod.descKey, prod.defaultDesc) : prod.defaultDesc;
+
             const btnText = isAffordable 
                 ? (window.t ? window.t('btn_get_reward', 'Получить') : 'Получить')
                 : (window.t ? window.t('btn_not_enough_coins', 'Мало баллов') : 'Мало баллов');
 
             itemCard.innerHTML = `
-                <div class="shop-item-icon">${prod.emoji}</div>
+                <div class="shop-item-icon">${offer.emoji}</div>
                 <div class="shop-item-info">
-                    <h4>${prodName}</h4>
-                    <p class="shop-item-desc">${prodDesc}</p>
+                    <h4>${offer.title}</h4>
+                    <div class="offer-disclaimer">ℹ️ ${disclaimerText}</div>
                     <div class="shop-item-footer">
-                        <span class="shop-price">${prod.price} 🍃</span>
-                        <button type="button" class="btn-buy-reward" data-id="${prod.id}" ${isAffordable ? '' : 'disabled'}>
+                        <span class="shop-price">${offer.price} 🍃</span>
+                        <button type="button" class="btn-buy-reward" data-id="${offer.id}">
                             ${btnText}
                         </button>
                     </div>
                 </div>
             `;
             container.appendChild(itemCard);
-        });
-        
-        container.querySelectorAll('.btn-buy-reward').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const prodId = parseInt(btn.dataset.id, 10);
-                const product = rewardProducts.find(p => p.id === prodId);
-                if (product) {
-                    purchaseReward(product);
-                }
-            });
+
+            const buyBtn = itemCard.querySelector('.btn-buy-reward');
+            if (buyBtn) {
+                buyBtn.addEventListener('click', () => {
+                    triggerPurchaseFlow(offer, partner);
+                });
+            }
         });
     }
 
-    function purchaseReward(product) {
+    // Совместимый оберточный метод
+    function renderShopItems() {
+        const partnersGrid = document.getElementById('shop-partners-container');
+        const offersWrapper = document.getElementById('shop-offers-container');
+        if (offersWrapper && !offersWrapper.classList.contains('hidden') && currentActivePartner) {
+            renderPartnerOffers(currentActivePartner);
+        } else {
+            if (offersWrapper) offersWrapper.classList.add('hidden');
+            if (partnersGrid) partnersGrid.classList.remove('hidden');
+            renderShopPartners(currentShopCategory);
+        }
+    }
+
+    // Модалка подтверждения покупки
+    function triggerPurchaseFlow(offer, partner) {
+        pendingPurchaseOffer = { offer, partner };
+        const modal = document.getElementById('shop-confirm-modal');
+        const descText = document.getElementById('shop-confirm-desc-text');
+        const alertBox = document.getElementById('shop-confirm-alert');
         const balance = getCoins();
-        if (balance < product.price) {
-            alert(window.t ? window.t('err_not_enough_coins', 'Недостаточно баллов на балансе!') : 'Недостаточно баллов на балансе!');
-            return;
+
+        if (alertBox) {
+            alertBox.classList.add('hidden');
+            alertBox.textContent = '';
         }
-        
-        // Списываем
-        const remaining = balance - product.price;
-        localStorage.setItem('vaisperia_balance', remaining);
-        updateCoinsUI();
-        
-        // Показываем QR код
-        const modal = document.getElementById('qr-modal');
-        const modalName = document.getElementById('qr-coupon-item-name');
-        const modalCode = document.getElementById('qr-coupon-code');
-        
-        if (modal && modalName && modalCode) {
-            const prodName = window.t ? window.t(product.nameKey, product.defaultName) : product.defaultName;
-            modalName.textContent = prodName;
-            const randCode = "VS-" + Math.floor(1000 + Math.random() * 9000) + "-" + Math.floor(1000 + Math.random() * 9000);
-            modalCode.textContent = randCode;
-            modal.classList.remove('hidden');
+
+        if (descText) {
+            const template = window.t ? window.t('shop_confirm_desc', 'Вы действительно хотите обменять {coins} эко-коинов на «{title}»?') : 'Вы действительно хотите обменять {coins} эко-коинов на «{title}»?';
+            descText.textContent = template.replace('{coins}', offer.price).replace('{title}', offer.title);
         }
+
+        if (balance < offer.price) {
+            if (alertBox) {
+                alertBox.textContent = window.t ? window.t('err_not_enough_coins', 'Недостаточно баллов на балансе!') : 'Недостаточно баллов на балансе!';
+                alertBox.classList.remove('hidden');
+            }
+        }
+
+        if (modal) modal.classList.remove('hidden');
     }
 
-    // Обработчик закрытия модалки
+    const btnShopConfirmCancel = document.getElementById('btn-shop-confirm-cancel');
+    const btnShopConfirmSubmit = document.getElementById('btn-shop-confirm-submit');
+    const shopConfirmModal = document.getElementById('shop-confirm-modal');
+
+    if (btnShopConfirmCancel && shopConfirmModal) {
+        btnShopConfirmCancel.addEventListener('click', () => {
+            shopConfirmModal.classList.add('hidden');
+            pendingPurchaseOffer = null;
+        });
+    }
+
+    if (btnShopConfirmSubmit && shopConfirmModal) {
+        btnShopConfirmSubmit.addEventListener('click', () => {
+            if (!pendingPurchaseOffer) return;
+            const { offer, partner } = pendingPurchaseOffer;
+            const balance = getCoins();
+
+            if (balance < offer.price) {
+                const alertBox = document.getElementById('shop-confirm-alert');
+                if (alertBox) {
+                    alertBox.textContent = window.t ? window.t('err_not_enough_coins', 'Недостаточно баллов на балансе!') : 'Недостаточно баллов на балансе!';
+                    alertBox.classList.remove('hidden');
+                }
+                return;
+            }
+
+            // Списываем баллы
+            addCoins(-offer.price);
+
+            // Создаем купон
+            const randCode = "VS-" + partner.name.toUpperCase().replace(/\s+/g, '').substring(0, 4) + "-" + Math.floor(1000 + Math.random() * 9000);
+            const coupon = {
+                id: 'coupon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                partnerName: partner.name,
+                partnerEmoji: partner.emoji,
+                offerTitle: offer.title,
+                code: randCode,
+                purchasedAt: Date.now()
+            };
+
+            saveUserCoupon(coupon);
+            shopConfirmModal.classList.add('hidden');
+            pendingPurchaseOffer = null;
+
+            // Показываем QR модалку
+            const qrModal = document.getElementById('qr-modal');
+            const qrName = document.getElementById('qr-coupon-item-name');
+            const qrCode = document.getElementById('qr-coupon-code');
+            if (qrModal && qrName && qrCode) {
+                qrName.textContent = `${partner.name}: ${offer.title}`;
+                qrCode.textContent = randCode;
+                qrModal.classList.remove('hidden');
+            }
+
+            renderShopItems();
+            renderMyCoupons();
+        });
+    }
+
+    // Обработчик закрытия QR модалки
     const closeQrModalBtn = document.getElementById('closeQrModalBtn');
     const qrModal = document.getElementById('qr-modal');
     if (closeQrModalBtn && qrModal) {
         closeQrModalBtn.addEventListener('click', () => {
             qrModal.classList.add('hidden');
-            renderShopItems(); // Перерендерим товары
+            renderShopItems();
         });
     }
+
+    // --- КУПОНЫ В ПРОФИЛЕ ---
+    function getCouponsKey() {
+        const user = getCurrentUsername() || 'guest';
+        return `vaisperia_coupons_${user}`;
+    }
+
+    function getUserCoupons() {
+        const raw = localStorage.getItem(getCouponsKey());
+        if (!raw) return [];
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveUserCoupon(coupon) {
+        const coupons = getUserCoupons();
+        coupons.unshift(coupon);
+        localStorage.setItem(getCouponsKey(), JSON.stringify(coupons));
+    }
+
+    function removeUserCoupon(couponId) {
+        const coupons = getUserCoupons();
+        const updated = coupons.filter(c => c.id !== couponId);
+        localStorage.setItem(getCouponsKey(), JSON.stringify(updated));
+    }
+
+    function renderMyCoupons() {
+        const container = document.getElementById('my-coupons-container');
+        const badge = document.getElementById('coupons-count-badge');
+        if (!container) return;
+
+        const coupons = getUserCoupons();
+        if (badge) badge.textContent = coupons.length;
+
+        if (coupons.length === 0) {
+            const emptyText = window.t ? window.t('profile_coupons_empty', 'У вас пока нет купленных купонов. Выберите скидки в Магазине!') : 'У вас пока нет купленных купонов. Выберите скидки в Магазине!';
+            container.innerHTML = `<div class="history-placeholder">${emptyText}</div>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        const useBtnText = window.t ? window.t('btn_use_coupon', 'Использовать купон') : 'Использовать купон';
+        const disclaimerText = window.t ? window.t('shop_terms_disclaimer', '1 купон на 1 чек. Не суммируется с другими скидками.') : '1 купон на 1 чек. Не суммируется с другими скидками.';
+
+        coupons.forEach(coupon => {
+            const card = document.createElement('div');
+            card.className = 'coupon-card';
+            card.innerHTML = `
+                <div class="coupon-header">
+                    <span class="coupon-partner"><span>${coupon.partnerEmoji || '🎁'}</span> ${coupon.partnerName}</span>
+                    <span class="coupon-code-tag">${coupon.code}</span>
+                </div>
+                <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">${coupon.offerTitle}</div>
+                <div class="coupon-qr-box">
+                    <svg class="coupon-qr-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="100" height="100" rx="8" fill="#F8FAFC"/>
+                        <rect x="10" y="10" width="25" height="25" fill="#0F5A3E"/>
+                        <rect x="15" y="15" width="15" height="15" fill="#FFFFFF"/>
+                        <rect x="18" y="18" width="9" height="9" fill="#10B981"/>
+                        <rect x="65" y="10" width="25" height="25" fill="#0F5A3E"/>
+                        <rect x="70" y="15" width="15" height="15" fill="#FFFFFF"/>
+                        <rect x="73" y="18" width="9" height="9" fill="#10B981"/>
+                        <rect x="10" y="65" width="25" height="25" fill="#0F5A3E"/>
+                        <rect x="15" y="70" width="15" height="15" fill="#FFFFFF"/>
+                        <rect x="18" y="73" width="9" height="9" fill="#10B981"/>
+                        <rect x="42" y="10" width="16" height="8" fill="#10B981"/>
+                        <rect x="42" y="24" width="8" height="16" fill="#0F5A3E"/>
+                        <rect x="52" y="32" width="16" height="16" fill="#10B981"/>
+                        <rect x="10" y="42" width="16" height="8" fill="#0F5A3E"/>
+                        <rect x="74" y="42" width="16" height="16" fill="#10B981"/>
+                        <rect x="42" y="65" width="16" height="25" fill="#0F5A3E"/>
+                        <rect x="65" y="74" width="25" height="16" fill="#10B981"/>
+                    </svg>
+                    <div class="coupon-terms">
+                        <strong>Покажите QR-код кассиру:</strong><br>
+                        ${disclaimerText}
+                    </div>
+                </div>
+                <button type="button" class="btn-use-coupon" data-id="${coupon.id}">
+                    ${useBtnText}
+                </button>
+            `;
+            container.appendChild(card);
+
+            const useBtn = card.querySelector('.btn-use-coupon');
+            if (useBtn) {
+                useBtn.addEventListener('click', () => {
+                    removeUserCoupon(coupon.id);
+                    const msgText = window.t ? window.t('msg_coupon_used', 'Купон успешно применен и погашен!') : 'Купон успешно применен и погашен!';
+                    alert(msgText);
+                    renderMyCoupons();
+                });
+            }
+        });
+    }
+
 
 
     // -----------------------------------------------------

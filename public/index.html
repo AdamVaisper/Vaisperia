@@ -295,8 +295,29 @@
                         <p data-i18n="shop_subtitle">Меняйте накопленные эко-коины на классные бонусы</p>
                     </div>
                     
-                    <div class="shop-grid" id="shop-items-container">
-                        <!-- Награды будут сгенерированы в JS -->
+                    <!-- Категории партеров (Scrollable Chips) -->
+                    <div class="shop-category-chips" id="shop-category-chips">
+                        <button type="button" class="shop-chip active" data-category="all" data-i18n="shop_cat_all">Все</button>
+                        <button type="button" class="shop-chip" data-category="food" data-i18n="shop_cat_food">Еда</button>
+                        <button type="button" class="shop-chip" data-category="clothing" data-i18n="shop_cat_clothing">Одежда</button>
+                        <button type="button" class="shop-chip" data-category="education" data-i18n="shop_cat_education">Образование</button>
+                        <button type="button" class="shop-chip" data-category="sport" data-i18n="shop_cat_sport">Спорт</button>
+                    </div>
+
+                    <!-- 1. Сетка Партнеров -->
+                    <div class="shop-partners-grid" id="shop-partners-container">
+                        <!-- Динамически заполняется в JS -->
+                    </div>
+
+                    <!-- 2. Детальный просмотр предложений конкретного партнера -->
+                    <div id="shop-offers-container" class="shop-offers-wrapper hidden">
+                        <button type="button" id="btnBackToPartners" class="btn-back-partners" data-i18n="shop_back_partners">↩ Назад к партнерам</button>
+                        <div class="partner-header-card" id="partner-header-info">
+                            <!-- Информация о выбранном партнере -->
+                        </div>
+                        <div class="shop-grid" id="shop-items-container">
+                            <!-- Предложения партнера сгенерируются в JS -->
+                        </div>
                     </div>
                 </div>
             </section>
@@ -346,6 +367,17 @@
                         <h3 data-i18n="achievements_header">Ваши эко-достижения</h3>
                         <div class="achievements-grid" id="achievements-container">
                             <!-- Генерируется динамически с красивой анимацией в app.js -->
+                        </div>
+                    </div>
+
+                    <!-- Мои Эко-Купоны -->
+                    <div class="coupons-section" id="my-coupons-section">
+                        <div class="section-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 data-i18n="profile_coupons_title" style="margin-bottom: 0;">Мои эко-купоны</h3>
+                            <span class="badge-active-count" id="coupons-count-badge">0</span>
+                        </div>
+                        <div class="coupons-list" id="my-coupons-container">
+                            <div class="history-placeholder" data-i18n="profile_coupons_empty">У вас пока нет купленных купонов. Выберите скидки в Магазине!</div>
                         </div>
                     </div>
 
@@ -593,6 +625,22 @@
             <div style="display: flex; gap: 10px;">
                 <button type="button" id="btn-forgot-cancel" class="btn-safety-continue" style="flex: 1;" data-i18n="btn_close">Закрыть</button>
                 <button type="button" id="btn-forgot-submit" class="btn-geo-allow" style="flex: 1;" data-i18n="btn_send">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. Модальное окно подтверждения покупки купона -->
+    <div id="shop-confirm-modal" class="modal-overlay hidden">
+        <div class="modal-card" style="text-align: center;">
+            <div style="font-size: 2.5rem; margin-bottom: 8px;">🎁</div>
+            <h3 data-i18n="shop_confirm_title">Подтверждение покупки</h3>
+            <p id="shop-confirm-desc-text" style="font-size: 0.9rem; color: var(--text-main); margin: 12px 0 16px 0; line-height: 1.4;">
+                <!-- Динамически заполняется в JS -->
+            </p>
+            <div id="shop-confirm-alert" class="alert error hidden" style="margin-bottom: 14px; font-size: 0.82rem;"></div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" id="btn-shop-confirm-cancel" class="btn-safety-continue" style="flex: 1;" data-i18n="btn_cancel">Отмена</button>
+                <button type="button" id="btn-shop-confirm-submit" class="btn-geo-allow" style="flex: 1;" data-i18n="btn_confirm">Подтвердить</button>
             </div>
         </div>
     </div>
