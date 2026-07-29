@@ -462,18 +462,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateMonthProgress(problems) {
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
+        const nowMs = Date.now();
+        const window24h = 24 * 60 * 60 * 1000;
         
         let count = 0;
-        problems.forEach(prob => {
-            let state = typeof window.getProblemState === 'function' ? window.getProblemState(prob) : { createdAt: Date.now() };
-            const created = new Date(state.createdAt);
-            if (created.getMonth() === currentMonth && created.getFullYear() === currentYear) {
-                count++;
-            }
-        });
+        if (Array.isArray(problems)) {
+            problems.forEach(prob => {
+                let state = typeof window.getProblemState === 'function' ? window.getProblemState(prob) : { createdAt: Date.now() };
+                const createdTime = state.createdAt || (prob.timestamp ? Date.parse(prob.timestamp) : Date.now());
+                if (!isNaN(createdTime) && (nowMs - createdTime <= window24h) && (nowMs >= createdTime)) {
+                    count++;
+                }
+            });
+        }
         
         const currentEl = document.getElementById('month-progress-current');
         const fillEl = document.getElementById('month-progress-fill');
@@ -1657,7 +1658,16 @@ document.addEventListener("DOMContentLoaded", () => {
             messageBox.textContent = "";
             messageBox.style.display = "none";
 
+            const descValue = document.getElementById('description') ? document.getElementById('description').value.trim() : '';
+            const latValue = latInput ? latInput.value.trim() : '';
+            const lngValue = lngInput ? lngInput.value.trim() : '';
             let file = photoInput.files[0];
+
+            // Кастомная валидация обязательных полей без нативных браузерных тултипов
+            if (!file || !descValue || !latValue || !lngValue) {
+                showMessage(window.t ? window.t('err_fill_all_fields', 'Пожалуйста, заполните все обязательные поля: фото, описание и координаты.') : 'Пожалуйста, заполните все обязательные поля: фото, описание и координаты.', "error");
+                return;
+            }
             
             // Клиентская валидация размера файла (5 МБ)
             if (file && file.size > 5 * 1024 * 1024) {

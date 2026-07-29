@@ -69,8 +69,8 @@
             report_title: "Сообщить о городской проблеме",
             ux_hint_label: "Полезный совет:",
             ux_hint_text: "Чем точнее фотография и геолокация, тем быстрее организация сможет решить проблему.",
-            month_progress_title: "Прогресс за месяц",
-            month_progress_goal: "Цель: 10 отчетов для бонуса",
+            month_progress_title: "Прогресс за 24 часа",
+            month_progress_goal: "Цель: 10 отчетов за 24ч",
             month_progress_units: "отчетов",
             cat_label: "Категория проблемы",
             cat_roads: "Дороги",
@@ -195,6 +195,7 @@
             msg_report_created: "Отчет успешно создан!",
             msg_report_guest_created: "Отчет успешно создан анонимно! (В гостевом режиме баллы и профиль не сохраняются).",
             err_network_submit: "Сетевой сбой при отправке формы. Попробуйте еще раз.",
+            err_fill_all_fields: "Пожалуйста, заполните все обязательные поля: фото, описание и координаты.",
             'errors.field_too_long': "Значение поля слишком длинное.",
             errors: {
                 field_too_long: "Значение поля слишком длинное."
@@ -264,8 +265,8 @@
             report_title: "Shahar muammosi haqida xabar berish",
             ux_hint_label: "Foydali maslahat:",
             ux_hint_text: "Fotosurat va geolokatsiya qanchalik aniq bo'lsa, tashkilot muammoni shunchalik tez hal qiladi.",
-            month_progress_title: "Oylik taraqqiyot",
-            month_progress_goal: "Maqsad: Bonus uchun 10 ta hisobot",
+            month_progress_title: "24 soatlik taraqqiyot",
+            month_progress_goal: "Maqsad: 24 soatda 10 ta hisobot",
             month_progress_units: "hisobotlar",
             cat_label: "Muammo kategoriyasi",
             cat_roads: "Yo'llar",
@@ -390,6 +391,7 @@
             msg_report_created: "Hisobot muvaffaqiyatli yaratildi!",
             msg_report_guest_created: "Hisobot anonim tarzda muvaffaqiyatli yaratildi!",
             err_network_submit: "Shaklni yuborishda tarmoq xatosi. Qaytadan urinib ko'ring.",
+            err_fill_all_fields: "Iltimos, barcha majburiy maydonlarni to'ldiring: foto, tavsif va koordinatalar.",
             'errors.field_too_long': "Maydon qiymati juda uzun.",
             errors: {
                 field_too_long: "Maydon qiymati juda uzun."
@@ -585,6 +587,7 @@
             msg_report_created: "Report created successfully!",
             msg_report_guest_created: "Report created anonymously!",
             err_network_submit: "Network error submitting report. Please try again.",
+            err_fill_all_fields: "Please fill in all required fields: photo, description, and location.",
             'errors.field_too_long': "Field value too long.",
             errors: {
                 field_too_long: "Field value too long."

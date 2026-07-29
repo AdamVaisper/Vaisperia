@@ -196,7 +196,7 @@
 
                     <div id="messageBox" class="alert"></div>
 
-                    <form id="reportForm">
+                    <form id="reportForm" novalidate>
                         <!-- Плитки категорий -->
                         <div class="form-group">
                             <label data-i18n="cat_label">Категория проблемы</label>
@@ -248,7 +248,7 @@
                         <div class="form-group">
                             <label for="photo" data-i18n="photo_label">Фотография проблемы (До 5МБ)</label>
                             <div class="file-upload-wrapper">
-                                <input type="file" id="photo" name="photo" accept="image/*" capture="environment" required>
+                                <input type="file" id="photo" name="photo" accept="image/*" capture="environment">
                                 <div class="file-upload-dummy">
                                     <span class="file-dummy-icon">📸</span>
                                     <span class="file-dummy-text" id="photo-selected-name" data-i18n="photo_dummy">Сделать снимок на месте</span>
@@ -258,14 +258,14 @@
 
                         <div class="form-group">
                             <label for="description" data-i18n="desc_label">Описание проблемы</label>
-                            <textarea id="description" name="description" data-i18n-placeholder="desc_placeholder" placeholder="Детально опишите проблему (например: открытый люк, куча мусора за домом, поломка освещения...)" required></textarea>
+                            <textarea id="description" name="description" data-i18n-placeholder="desc_placeholder" placeholder="Детально опишите проблему (например: открытый люк, куча мусора за домом, поломка освещения...)"></textarea>
                         </div>
 
                         <div class="form-group">
                             <label data-i18n="location_label">Координаты местоположения</label>
                             <div class="location-fields">
-                                <input type="text" id="latitude" name="latitude" data-i18n-placeholder="lat_placeholder" placeholder="Широта" required>
-                                <input type="text" id="longitude" name="longitude" data-i18n-placeholder="lng_placeholder" placeholder="Долгота" required>
+                                <input type="text" id="latitude" name="latitude" data-i18n-placeholder="lat_placeholder" placeholder="Широта">
+                                <input type="text" id="longitude" name="longitude" data-i18n-placeholder="lng_placeholder" placeholder="Долгота">
                             </div>
                             <small id="locationStatus" data-i18n="loc_loading">Загрузка геолокации...</small>
                             <small class="location-hint" data-i18n="loc_hint">Вы также можете установить маркер, просто кликнув по нужному месту на вкладке «Карта».</small>
