@@ -194,7 +194,11 @@
             msg_report_success_coins: "Отчет успешно создан! Начислено +{coins} эко-коинов 🍃",
             msg_report_created: "Отчет успешно создан!",
             msg_report_guest_created: "Отчет успешно создан анонимно! (В гостевом режиме баллы и профиль не сохраняются).",
-            err_network_submit: "Сетевой сбой при отправке формы. Попробуйте еще раз."
+            err_network_submit: "Сетевой сбой при отправке формы. Попробуйте еще раз.",
+            'errors.field_too_long': "Значение поля слишком длинное.",
+            errors: {
+                field_too_long: "Значение поля слишком длинное."
+            }
         },
         uz: {
             app_title: "Vaisperia",
@@ -385,7 +389,11 @@
             msg_report_success_coins: "Hisobot muvaffaqiyatli yaratildi! +{coins} eko-koin berildi 🍃",
             msg_report_created: "Hisobot muvaffaqiyatli yaratildi!",
             msg_report_guest_created: "Hisobot anonim tarzda muvaffaqiyatli yaratildi!",
-            err_network_submit: "Shaklni yuborishda tarmoq xatosi. Qaytadan urinib ko'ring."
+            err_network_submit: "Shaklni yuborishda tarmoq xatosi. Qaytadan urinib ko'ring.",
+            'errors.field_too_long': "Maydon qiymati juda uzun.",
+            errors: {
+                field_too_long: "Maydon qiymati juda uzun."
+            }
         },
         en: {
             app_title: "Vaisperia",
@@ -576,7 +584,11 @@
             msg_report_success_coins: "Report created successfully! Earned +{coins} eco-coins 🍃",
             msg_report_created: "Report created successfully!",
             msg_report_guest_created: "Report created anonymously!",
-            err_network_submit: "Network error submitting report. Please try again."
+            err_network_submit: "Network error submitting report. Please try again.",
+            'errors.field_too_long': "Field value too long.",
+            errors: {
+                field_too_long: "Field value too long."
+            }
         }
     };
 
@@ -596,8 +608,25 @@
     let currentLang = getSavedLanguage();
 
     function t(key, fallback = "") {
+        if (!key) return fallback || "";
         if (translations[currentLang] && translations[currentLang][key] !== undefined) {
             return translations[currentLang][key];
+        }
+        if (key.includes('.')) {
+            const parts = key.split('.');
+            let curr = translations[currentLang];
+            for (const p of parts) {
+                if (curr && curr[p] !== undefined) curr = curr[p];
+                else { curr = undefined; break; }
+            }
+            if (typeof curr === 'string') return curr;
+            
+            let currRu = translations.ru;
+            for (const p of parts) {
+                if (currRu && currRu[p] !== undefined) currRu = currRu[p];
+                else { currRu = undefined; break; }
+            }
+            if (typeof currRu === 'string') return currRu;
         }
         if (translations.ru && translations.ru[key] !== undefined) {
             return translations.ru[key];

@@ -63,9 +63,12 @@ body {
   justify-content: center;
   align-items: center;
   width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: linear-gradient(135deg, #F0F4F8 0%, #E2E8F0 100%);
   padding: 20px;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .login-card {
@@ -77,6 +80,9 @@ body {
   box-shadow: var(--shadow-lg);
   border: 1px solid rgba(255, 255, 255, 0.7);
   animation: slideUp 0.5s ease;
+  max-height: 90vh;
+  max-height: 90dvh;
+  overflow-y: auto;
 }
 
 .login-logo {
@@ -807,6 +813,9 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  padding: 0 16px;
+  min-width: 0;
+  box-sizing: border-box;
   transition: var(--transition-smooth);
 }
 
@@ -817,12 +826,18 @@ body {
 
 .file-dummy-icon {
   font-size: 1.4rem;
+  flex-shrink: 0;
 }
 
 .file-dummy-text {
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
 }
 
 /* Coordinate Inputs Layout */

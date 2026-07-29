@@ -121,6 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.removeItem('isAuth');
             localStorage.removeItem('vaisperia_username');
             localStorage.setItem('vaisperia_isGuest', 'true');
+            resetFormState();
             checkAuth();
         });
     }
@@ -318,11 +319,64 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    function resetFormState() {
+        const rForm = document.getElementById('reportForm');
+        if (rForm) rForm.reset();
+        
+        const photoLbl = document.getElementById('photo-selected-name');
+        if (photoLbl) {
+            photoLbl.textContent = window.t ? (window.t('take_photo_onsite') || window.t('photo_dummy') || "Сделать снимок на месте") : "Сделать снимок на месте";
+        }
+
+        const cTiles = document.querySelectorAll('.category-tile');
+        const cInput = document.getElementById('report-category');
+        if (cTiles && cInput) {
+            cTiles.forEach(t => t.classList.remove('selected'));
+            const defTile = document.querySelector('.category-tile[data-value="Дороги"]');
+            if (defTile) defTile.classList.add('selected');
+            cInput.value = "Дороги";
+        }
+
+        const descInput = document.getElementById('description');
+        if (descInput) descInput.value = "";
+
+        const lLat = document.getElementById('latitude');
+        const lLng = document.getElementById('longitude');
+        if (lLat) lLat.value = "";
+        if (lLng) lLng.value = "";
+        localStorage.removeItem('selectedLat');
+        localStorage.removeItem('selectedLng');
+
+        const lStatus = document.getElementById('locationStatus');
+        if (lStatus) {
+            lStatus.textContent = window.t ? window.t('loc_loading', 'Загрузка геолокации...') : 'Загрузка геолокации...';
+            lStatus.style.color = "var(--text-muted)";
+        }
+
+        const aCheckbox = document.getElementById('is-anonymous-checkbox');
+        if (aCheckbox) aCheckbox.checked = false;
+
+        const msgB = document.getElementById('messageBox');
+        if (msgB) {
+            msgB.className = "alert";
+            msgB.textContent = "";
+            msgB.style.display = "none";
+        }
+
+        const sBtn = document.getElementById('submitBtn');
+        if (sBtn) {
+            sBtn.disabled = true;
+            sBtn.textContent = window.t ? (window.t('submit_report') || window.t('btn_submit_report') || "Отправить отчет") : "Отправить отчет";
+        }
+    }
+    window.resetFormState = resetFormState;
+
     function performLogout() {
         localStorage.removeItem('vaisperia_isLoggedIn');
         localStorage.removeItem('isAuth');
         localStorage.removeItem('vaisperia_username');
         localStorage.removeItem('vaisperia_isGuest');
+        resetFormState();
         checkAuth();
     }
 
@@ -1529,11 +1583,18 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
         
-        // Индикация выбранного файла
+        // Индикация выбранного файла (с обрезкой длинного имени)
         if (photoInput && photoLabel) {
             photoInput.addEventListener('change', () => {
                 if (photoInput.files.length > 0) {
-                    photoLabel.textContent = photoInput.files[0].name;
+                    const rawName = photoInput.files[0].name;
+                    if (rawName.length > 25) {
+                        const ext = rawName.includes('.') ? rawName.substring(rawName.lastIndexOf('.')) : '';
+                        const base = rawName.includes('.') ? rawName.substring(0, rawName.lastIndexOf('.')) : rawName;
+                        photoLabel.textContent = base.substring(0, 20) + '...' + ext;
+                    } else {
+                        photoLabel.textContent = rawName;
+                    }
                 } else {
                     photoLabel.textContent = window.t ? (window.t('take_photo_onsite') || window.t('photo_dummy') || "Сделать снимок на месте") : "Сделать снимок на месте";
                 }
@@ -1596,7 +1657,7 @@ document.addEventListener("DOMContentLoaded", () => {
             messageBox.textContent = "";
             messageBox.style.display = "none";
 
-            const file = photoInput.files[0];
+            let file = photoInput.files[0];
             
             // Клиентская валидация размера файла (5 МБ)
             if (file && file.size > 5 * 1024 * 1024) {
@@ -1604,7 +1665,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
+            // Обрезка слишком длинного имени файла перед отправкой на сервер
+            if (file && file.name.length > 25) {
+                const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.')) : '';
+                const base = file.name.includes('.') ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name;
+                const truncatedName = base.substring(0, 20) + ext;
+                file = new File([file], truncatedName, { type: file.type });
+            }
+
             const formData = new FormData(reportForm);
+            if (file) {
+                formData.set('photo', file);
+            }
             const isLoggedIn = (localStorage.getItem('vaisperia_isLoggedIn') === 'true' || localStorage.getItem('isAuth') === 'true');
             const currentUsername = localStorage.getItem('vaisperia_username') || 'Adam_Vaisper';
             
@@ -1674,18 +1746,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         showMessage(window.t ? window.t('msg_report_guest_created', 'Отчет успешно создан анонимно! (В гостевом режиме баллы и профиль не сохраняются).') : 'Отчет успешно создан анонимно! (В гостевом режиме баллы и профиль не сохраняются).', "success");
                     }
 
-                    // Очистка формы
-                    reportForm.reset();
-                    if (anonCheckbox) anonCheckbox.checked = false;
-                    if (photoLabel) {
-                        photoLabel.textContent = window.t ? (window.t('take_photo_onsite') || window.t('photo_dummy') || "Сделать снимок на месте") : "Сделать снимок на месте";
-                    }
-                    if (categoryTiles && categoryInput) {
-                        categoryTiles.forEach(t => t.classList.remove('selected'));
-                        const defaultTile = document.querySelector('.category-tile[data-value="Дороги"]');
-                        if (defaultTile) defaultTile.classList.add('selected');
-                        categoryInput.value = "Дороги";
-                    }
+                    // Очистка формы через resetFormState
+                    resetFormState();
 
                     // Обновляем карту в фоне
                     if (window.fetchProblemsAndDraw) {
@@ -1705,14 +1767,24 @@ document.addEventListener("DOMContentLoaded", () => {
                     }, 2000);
 
                 } else {
-                    showMessage(data.error || "Неизвестная ошибка сервера.", "error");
+                    const errText = data.error || "";
+                    if (errText === "Field value too long" || errText.includes("Field value too long") || errText.includes("LIMIT_FIELD_VALUE")) {
+                        showMessage(window.t ? window.t('errors.field_too_long', 'Значение поля слишком длинное.') : 'Значение поля слишком длинное.', "error");
+                    } else {
+                        showMessage(errText || "Неизвестная ошибка сервера.", "error");
+                    }
                     submitBtn.disabled = false;
                     submitBtn.textContent = window.t ? (window.t('submit_report') || window.t('btn_submit_report') || "Отправить отчет") : "Отправить отчет";
                 }
 
             } catch (error) {
                 console.error("Submission error:", error);
-                showMessage(window.t ? window.t('err_network_submit', 'Сетевой сбой при отправке формы. Попробуйте еще раз.') : 'Сетевой сбой при отправке формы. Попробуйте еще раз.', "error");
+                const errMsg = error && error.message ? error.message : "";
+                if (errMsg.includes("Field value too long") || errMsg.includes("LIMIT_FIELD_VALUE")) {
+                    showMessage(window.t ? window.t('errors.field_too_long', 'Значение поля слишком длинное.') : 'Значение поля слишком длинное.', "error");
+                } else {
+                    showMessage(window.t ? window.t('err_network_submit', 'Сетевой сбой при отправке формы. Попробуйте еще раз.') : 'Сетевой сбой при отправке формы. Попробуйте еще раз.', "error");
+                }
                 submitBtn.disabled = false;
                 submitBtn.textContent = window.t ? (window.t('submit_report') || window.t('btn_submit_report') || "Отправить отчет") : "Отправить отчет";
             }

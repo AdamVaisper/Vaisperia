@@ -251,8 +251,14 @@ app.post('/api/problems', (req, res) => {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'File size limit exceeded. Maximum allowed size is 5MB.' });
       }
+      if (err.code === 'LIMIT_FIELD_VALUE' || (err.message && err.message.includes('Field value too long'))) {
+        return res.status(400).json({ error: 'Field value too long' });
+      }
       return res.status(400).json({ error: err.message });
     } else if (err) {
+      if (err.message && err.message.includes('Field value too long')) {
+        return res.status(400).json({ error: 'Field value too long' });
+      }
       return res.status(400).json({ error: err.message });
     }
 
