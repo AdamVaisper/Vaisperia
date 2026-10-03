@@ -128,61 +128,139 @@ function calculateEuclideanDistance(v1, v2) {
 
 // API Endpoints
 
-// 1. Biometric User Registration (With Email)
-app.post('/api/register', (req, res) => {
+// 1. Universal Biometric Auth / Registration Endpoint
+const handleBiometricAuth = (req, res) => {
   const { username, password, email, faceVector } = req.body;
 
-  if (!username || !password || !email || !faceVector || !Array.isArray(faceVector)) {
-    return res.status(400).json({ error: 'Пожалуйста, заполните все поля (Никнейм, Gmail, Пароль) и пройдите биометрию.' });
+  if (!faceVector || !Array.isArray(faceVector) || faceVector.length === 0) {
+    return res.status(400).json({ 
+      success: false, 
+      errorKey: 'fill_required_fields',
+      error: 'Biometric face scan is required.' 
+    });
   }
 
-  // Check biometric uniqueness against existing vectors in SQLite
-  db.all('SELECT id, username, email, face_vector FROM users', [], (err, existingUsers) => {
+  // Check face vector in SQLite database
+  db.all('SELECT id, username, email, password, face_vector FROM users', [], (err, existingUsers) => {
     if (err) {
-      return res.status(500).json({ error: 'Ошибка проверки биометрии в базе данных.' });
+      return res.status(500).json({ success: false, error: 'Database error checking biometrics.' });
     }
 
-    // Check Euclidean distance threshold (< 0.25 indicates matching face biometrics)
-    for (const user of existingUsers) {
+    let matchedUser = null;
+
+    // Check Euclidean distance (< 0.25 threshold indicates matching face biometrics)
+    for (const user of (existingUsers || [])) {
       try {
         const storedVector = JSON.parse(user.face_vector);
         const distance = calculateEuclideanDistance(faceVector, storedVector);
         if (distance < 0.25) {
-          return res.status(400).json({ 
-            error: `Пользователь с такой биометрией уже зарегистрирован!`
-          });
+          matchedUser = user;
+          break;
         }
       } catch (e) {
         console.error('Error parsing stored face vector:', e);
       }
     }
 
-    // Insert unique user into DB
-    const stmt = db.prepare(`
-      INSERT INTO users (username, password, email, face_vector)
-      VALUES (?, ?, ?, ?)
-    `);
+    // CASE 1: FACE EXISTS IN DB (Existing User)
+    if (matchedUser) {
+      const inputUsername = (username || '').trim();
+      const inputEmail = (email || '').trim().toLowerCase();
+      const inputPassword = password || '';
 
-    const vectorStr = JSON.stringify(faceVector);
-    stmt.run([username.trim(), password, email.trim().toLowerCase(), vectorStr], function(insertErr) {
-      if (insertErr) {
-        if (insertErr.message.includes('UNIQUE constraint failed')) {
-          return res.status(400).json({ error: 'Пользователь с таким именем или Email уже существует!' });
-        }
-        return res.status(500).json({ error: insertErr.message });
+      const dbUsername = (matchedUser.username || '').trim();
+      const dbEmail = (matchedUser.email || '').trim().toLowerCase();
+      const dbPassword = matchedUser.password || '';
+
+      const usernameMatches = inputUsername.length > 0 && inputUsername === dbUsername;
+      const emailMatches = inputEmail.length > 0 && inputEmail === dbEmail;
+      const passwordMatches = inputPassword.length > 0 && inputPassword === dbPassword;
+
+      if (usernameMatches && emailMatches && passwordMatches) {
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Biometric authentication successful!',
+          isNewUser: false,
+          userId: matchedUser.id,
+          username: matchedUser.username,
+          email: matchedUser.email
+        });
+      } else {
+        // ANY credential does NOT match
+        return res.status(400).json({ 
+          success: false, 
+          errorKey: 'auth_credentials_mismatch',
+          error: 'Incorrect username, Gmail, or password for this biometric profile!'
+        });
       }
+    }
 
-      res.status(201).json({ 
-        success: true, 
-        message: 'Регистрация и биометрический контроль успешно пройдены!',
-        userId: this.lastID,
-        username: username.trim(),
-        email: email.trim().toLowerCase()
+    // CASE 2: FACE DOES NOT EXIST IN DB (New User)
+    const inputUsername = (username || '').trim();
+    const inputEmail = (email || '').trim().toLowerCase();
+    const inputPassword = password || '';
+
+    // Verify if Username, Gmail, and Password are provided and valid
+    if (!inputUsername || !inputEmail || !inputPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        errorKey: 'fill_required_fields',
+        error: 'Please fill in Username, Gmail, and Password to complete registration.' 
       });
-    });
-    stmt.finalize();
+    }
+
+    // Check if Username or Email is already registered by another account
+    db.get(
+      'SELECT id FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)', 
+      [inputUsername, inputEmail], 
+      (checkErr, existingAcc) => {
+        if (checkErr) {
+          return res.status(500).json({ success: false, error: checkErr.message });
+        }
+        if (existingAcc) {
+          return res.status(400).json({ 
+            success: false, 
+            errorKey: 'user_already_exists',
+            error: 'User with this username or Gmail already exists!' 
+          });
+        }
+
+        // All fields valid & unique -> Create new account
+        const stmt = db.prepare(`
+          INSERT INTO users (username, password, email, face_vector)
+          VALUES (?, ?, ?, ?)
+        `);
+
+        const vectorStr = JSON.stringify(faceVector);
+        stmt.run([inputUsername, inputPassword, inputEmail, vectorStr], function(insertErr) {
+          if (insertErr) {
+            if (insertErr.message.includes('UNIQUE constraint failed')) {
+              return res.status(400).json({ 
+                success: false, 
+                errorKey: 'user_already_exists',
+                error: 'User with this username or Gmail already exists!' 
+              });
+            }
+            return res.status(500).json({ success: false, error: insertErr.message });
+          }
+
+          return res.status(201).json({ 
+            success: true, 
+            message: 'Registration and biometric control successfully completed!',
+            isNewUser: true,
+            userId: this.lastID,
+            username: inputUsername,
+            email: inputEmail
+          });
+        });
+        stmt.finalize();
+      }
+    );
   });
-});
+};
+
+app.post('/api/register', handleBiometricAuth);
+app.post('/api/biometric-auth', handleBiometricAuth);
 
 // Endpoint: Forgot password reset simulation
 app.post('/api/forgot-password', (req, res) => {

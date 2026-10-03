@@ -240,15 +240,6 @@ document.addEventListener("DOMContentLoaded", () => {
         bioStep1Form.addEventListener('submit', (e) => {
             e.preventDefault();
             hideBioError();
-            const usernameInput = document.getElementById('username');
-            const emailInput = document.getElementById('email');
-            const passwordInput = document.getElementById('password');
-
-            if (!usernameInput || !usernameInput.value.trim() || !emailInput || !emailInput.value.trim() || !passwordInput || !passwordInput.value) {
-                showBioError("Заполните никнейм, Gmail и пароль.");
-                return;
-            }
-
             bioStep1.classList.add('hidden');
             bioStep2.classList.remove('hidden');
             startWebcam();
@@ -265,7 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Сканирование биометрии и отправка на POST /api/register
+    // Сканирование биометрии и динамическая обработка (POST /api/register)
     if (btnSubmitBiometrics) {
         btnSubmitBiometrics.addEventListener('click', async () => {
             hideBioError();
@@ -277,15 +268,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const email = emailInput ? emailInput.value.trim() : '';
             const password = passwordInput ? passwordInput.value : '';
 
-            if (!username || !password || !email) {
-                showBioError("Пожалуйста, заполните никнейм, Gmail и пароль на Шаге 1.");
+            const faceVector = captureFaceVector();
+            if (!faceVector || !Array.isArray(faceVector) || faceVector.length === 0) {
+                const scanErr = window.t ? window.t('bio_step2_hint') : 'Разместите лицо по центру каучуковой рамки.';
+                showBioError(scanErr);
                 return;
             }
 
             btnSubmitBiometrics.disabled = true;
-            btnSubmitBiometrics.textContent = "Сканирование и проверка...";
-
-            const faceVector = captureFaceVector();
+            btnSubmitBiometrics.textContent = window.t ? window.t('scanning_and_verifying', 'Сканирование и проверка...') : 'Сканирование и проверка...';
 
             try {
                 const response = await fetch('/api/register', {
@@ -296,26 +287,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const data = await response.json();
 
-                if (response.ok) {
+                if (response.ok && data.success) {
+                    const finalUsername = data.username || username;
+                    const finalEmail = data.email || email;
                     localStorage.setItem('vaisperia_isLoggedIn', 'true');
                     localStorage.setItem('isAuth', 'true');
-                    localStorage.setItem('vaisperia_username', username);
-                    localStorage.setItem(`vaisperia_email_${username}`, email);
+                    localStorage.setItem('vaisperia_username', finalUsername);
+                    if (finalEmail) {
+                        localStorage.setItem(`vaisperia_email_${finalUsername}`, finalEmail);
+                    }
                     localStorage.removeItem('vaisperia_isGuest');
                     stopWebcam();
                     btnSubmitBiometrics.disabled = false;
-                    btnSubmitBiometrics.textContent = "Пройти биометрию 🗸";
+                    btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
                     checkAuth();
                 } else {
-                    showBioError(data.error || "Ошибка биометрической регистрации.");
+                    const errKey = data.errorKey || data.error;
+                    const errorMsg = window.t ? window.t(errKey, data.error || 'Ошибка биометрической авторизации.') : (data.error || 'Ошибка биометрической авторизации.');
+                    showBioError(errorMsg);
                     btnSubmitBiometrics.disabled = false;
-                    btnSubmitBiometrics.textContent = "Пройти биометрию 🗸";
+                    btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
                 }
             } catch (err) {
-                console.error("Biometric registration error:", err);
-                showBioError("Ошибка соединения с сервером.");
+                console.error("Biometric processing error:", err);
+                const netErr = window.t ? window.t('err_network_submit', 'Ошибка соединения с сервером.') : 'Ошибка соединения с сервером.';
+                showBioError(netErr);
                 btnSubmitBiometrics.disabled = false;
-                btnSubmitBiometrics.textContent = "Пройти биометрию 🗸";
+                btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
             }
         });
     }

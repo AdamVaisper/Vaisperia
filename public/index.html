@@ -38,9 +38,9 @@
                     <span class="lang-dropdown-arrow">▼</span>
                 </button>
                 <div id="loginLangMenu" class="lang-dropdown-menu hidden">
-                    <button type="button" class="lang-option" data-lang="ru"><span class="flag">🇷🇺</span> Русский</button>
-                    <button type="button" class="lang-option" data-lang="uz"><span class="flag">🇺🇿</span> O'zbekcha</button>
-                    <button type="button" class="lang-option" data-lang="en"><span class="flag">🇬🇧</span> English</button>
+                    <button type="button" class="lang-option" data-lang="ru"><span class="flag">🇷🇺</span> RU</button>
+                    <button type="button" class="lang-option" data-lang="uz"><span class="flag">🇺🇿</span> UZ</button>
+                    <button type="button" class="lang-option" data-lang="en"><span class="flag">🇬🇧</span> EN</button>
                 </div>
             </div>
 
@@ -68,12 +68,12 @@
                 <form id="bioStep1Form">
                     <div class="form-group-login">
                         <label for="username" data-i18n="label_username">Никнейм гражданина</label>
-                        <input type="text" id="username" data-i18n-placeholder="placeholder_username" placeholder="Введите ваш никнейм" required>
+                        <input type="text" id="username" data-i18n-placeholder="placeholder_username" placeholder="Введите ваш никнейм">
                     </div>
 
                     <div class="form-group-login">
                         <label for="email" data-i18n="label_email">Электронная почта (Gmail)</label>
-                        <input type="email" id="email" data-i18n-placeholder="placeholder_email" placeholder="example@gmail.com" required>
+                        <input type="email" id="email" data-i18n-placeholder="placeholder_email" placeholder="example@gmail.com">
                     </div>
                     
                     <div class="form-group-login">
@@ -81,10 +81,10 @@
                             <label for="password" style="margin-bottom: 0;" data-i18n="label_password">Пароль доступа</label>
                             <button type="button" id="btnOpenForgotPassword" style="background: none; border: none; color: var(--eco-emerald); font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 0;" data-i18n="btn_forgot_password">Забыли пароль?</button>
                         </div>
-                        <input type="password" id="password" placeholder="••••••••" required>
+                        <input type="password" id="password" placeholder="••••••••">
                     </div>
                     
-                    <button type="submit" class="btn-login" id="btnGoToBioStep2" data-i18n="btn_next_bio">Далее: Сканирование лица ➔</button>
+                    <button type="submit" class="btn-login" id="btnGoToBioStep2" data-i18n="complete_biometrics">Пройти биометрию</button>
                 </form>
                 <div style="margin-top: 14px; text-align: center;">
                     <button type="button" class="btn-guest" id="btnGuestLogin" style="width:100%; padding: 12px; background: transparent; border: 1.5px dashed var(--eco-emerald); color: var(--eco-forest); font-weight: 700; border-radius: 12px; cursor: pointer; transition: var(--transition-smooth);" data-i18n="btn_guest_login">
@@ -104,8 +104,8 @@
                 <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;" data-i18n="bio_step2_hint">Разместите лицо по центру каучуковой рамки для уникальной биометрической идентификации.</p>
 
                 <div style="display: flex; gap: 10px;">
-                    <button type="button" class="btn-login" id="btnBackToStep1" style="background: #E2E8F0; color: var(--text-main); flex: 1;" data-i18n="btn_back">↩ Назад</button>
-                    <button type="button" class="btn-login" id="btnSubmitBiometrics" style="flex: 2;" data-i18n="btn_submit_bio">Пройти биометрию 🗸</button>
+                    <button type="button" class="btn-login" id="btnBackToStep1" style="background: #E2E8F0; color: var(--text-main); flex: 1; font-size: 0.82rem;" data-i18n="login_via_gmail">Войти через Gmail / Пароль</button>
+                    <button type="button" class="btn-login" id="btnSubmitBiometrics" style="flex: 1.2;" data-i18n="complete_biometrics">Пройти биометрию</button>
                 </div>
             </div>
         </div>
@@ -119,6 +119,18 @@
             <div class="logo-area">
                 <span class="logo-emoji">🌱</span>
                 <h1 data-i18n="app_title">Vaisperia</h1>
+            </div>
+            <div class="lang-selector-wrapper header-lang-selector">
+                <button type="button" id="headerLangBtn" class="lang-dropdown-btn" title="Выбор языка">
+                    <span id="headerLangFlag">🇷🇺</span>
+                    <span id="headerLangCode" class="lang-code-text">RU</span>
+                    <span class="lang-dropdown-arrow">▼</span>
+                </button>
+                <div id="headerLangMenu" class="lang-dropdown-menu hidden">
+                    <button type="button" class="lang-option" data-lang="ru"><span class="flag">🇷🇺</span> RU</button>
+                    <button type="button" class="lang-option" data-lang="uz"><span class="flag">🇺🇿</span> UZ</button>
+                    <button type="button" class="lang-option" data-lang="en"><span class="flag">🇬🇧</span> EN</button>
+                </div>
             </div>
         </header>
 
@@ -550,9 +562,9 @@
                             <span class="lang-dropdown-arrow">▼</span>
                         </button>
                         <div id="settingsLangMenu" class="lang-dropdown-menu hidden">
-                            <button type="button" class="lang-option" data-lang="ru"><span class="flag">🇷🇺</span> Русский</button>
-                            <button type="button" class="lang-option" data-lang="uz"><span class="flag">🇺🇿</span> O'zbekcha</button>
-                            <button type="button" class="lang-option" data-lang="en"><span class="flag">🇬🇧</span> English</button>
+                            <button type="button" class="lang-option" data-lang="ru"><span class="flag">🇷🇺</span> RU</button>
+                            <button type="button" class="lang-option" data-lang="uz"><span class="flag">🇺🇿</span> UZ</button>
+                            <button type="button" class="lang-option" data-lang="en"><span class="flag">🇬🇧</span> EN</button>
                         </div>
                     </div>
                 </div>

@@ -18,6 +18,12 @@
             bio_step2_hint: "Разместите лицо по центру каучуковой рамки для уникальной биометрической идентификации.",
             btn_back: "↩ Назад",
             btn_submit_bio: "Пройти биометрию 🗸",
+            complete_biometrics: "Пройти биометрию",
+            auth_credentials_mismatch: "Неверный ник, Gmail или пароль для этого биометрического профиля!",
+            login_via_gmail: "Войти через Gmail / Пароль",
+            user_already_exists: "Пользователь с таким никнеймом или Gmail уже существует!",
+            fill_required_fields: "Пожалуйста, заполните никнейм, Gmail и пароль для завершения регистрации.",
+            scanning_and_verifying: "Сканирование и проверка...",
             
             nav_home: "Главная",
             nav_map: "Карта",
@@ -234,6 +240,12 @@
             bio_step2_hint: "Yuzingizni noyob biometrik identifikatsiya qilish uchun ramka markaziga joylashtiring.",
             btn_back: "↩ Orqaga",
             btn_submit_bio: "Biometriyadan o'tish 🗸",
+            complete_biometrics: "Biometriyangizni tasdiqlang",
+            auth_credentials_mismatch: "Ushbu biometrik profil uchun login, Gmail yoki parol noto'g'ri!",
+            login_via_gmail: "Gmail / Parol orqali kirish",
+            user_already_exists: "Ushbu foydalanuvchi nomi yoki Gmail allaqachon ro'yxatdan o'tgan!",
+            fill_required_fields: "Ro'yxatdan o'tishni yakunlash uchun iltimos login, Gmail va parolni kiriting.",
+            scanning_and_verifying: "Skanerlash va tekshirish...",
             
             nav_home: "Bosh sahifa",
             nav_map: "Xarita",
@@ -449,6 +461,12 @@
             bio_step2_hint: "Place your face in the center of the frame for biometric identification.",
             btn_back: "↩ Back",
             btn_submit_bio: "Complete Biometrics 🗸",
+            complete_biometrics: "Complete Biometrics",
+            auth_credentials_mismatch: "Incorrect username, Gmail, or password for this biometric profile!",
+            login_via_gmail: "Sign in via Gmail / Password",
+            user_already_exists: "User with this username or Gmail already exists!",
+            fill_required_fields: "Please fill in Username, Gmail, and Password to complete registration.",
+            scanning_and_verifying: "Scanning and verifying...",
             
             nav_home: "Home",
             nav_map: "Map",
@@ -736,6 +754,12 @@
         if (loginFlag) loginFlag.textContent = langInfo.flag;
         if (loginCode) loginCode.textContent = langInfo.code;
 
+        // Update Header language switcher UI
+        const headerFlag = document.getElementById('headerLangFlag');
+        const headerCode = document.getElementById('headerLangCode');
+        if (headerFlag) headerFlag.textContent = langInfo.flag;
+        if (headerCode) headerCode.textContent = langInfo.code;
+
         // Update Settings language switcher UI
         const settingsFlag = document.getElementById('settingsLangFlag');
         const settingsDesc = document.getElementById('settingsCurrentLangText');
@@ -762,6 +786,8 @@
     function setupDropdowns() {
         const loginBtn = document.getElementById('loginLangBtn');
         const loginMenu = document.getElementById('loginLangMenu');
+        const headerBtn = document.getElementById('headerLangBtn');
+        const headerMenu = document.getElementById('headerLangMenu');
         const settingsBtn = document.getElementById('settingsLangBtn');
         const settingsMenu = document.getElementById('settingsLangMenu');
 
@@ -769,6 +795,16 @@
             loginBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 loginMenu.classList.toggle('hidden');
+                if (headerMenu) headerMenu.classList.add('hidden');
+                if (settingsMenu) settingsMenu.classList.add('hidden');
+            });
+        }
+
+        if (headerBtn && headerMenu) {
+            headerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                headerMenu.classList.toggle('hidden');
+                if (loginMenu) loginMenu.classList.add('hidden');
                 if (settingsMenu) settingsMenu.classList.add('hidden');
             });
         }
@@ -778,6 +814,7 @@
                 e.stopPropagation();
                 settingsMenu.classList.toggle('hidden');
                 if (loginMenu) loginMenu.classList.add('hidden');
+                if (headerMenu) headerMenu.classList.add('hidden');
             });
         }
 
@@ -789,12 +826,14 @@
                     setLanguage(selectedLang);
                 }
                 if (loginMenu) loginMenu.classList.add('hidden');
+                if (headerMenu) headerMenu.classList.add('hidden');
                 if (settingsMenu) settingsMenu.classList.add('hidden');
             });
         });
 
         document.addEventListener('click', () => {
             if (loginMenu) loginMenu.classList.add('hidden');
+            if (headerMenu) headerMenu.classList.add('hidden');
             if (settingsMenu) settingsMenu.classList.add('hidden');
         });
     }
