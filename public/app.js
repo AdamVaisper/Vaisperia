@@ -111,8 +111,12 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             loginScreen.classList.remove('hidden');
             appScreen.classList.add('hidden');
-            if (bioStep2) bioStep2.classList.add('hidden');
-            if (bioStep1) bioStep1.classList.remove('hidden');
+            // Preserve current active step (Step 1 vs Step 2) when checking auth status
+            if (bioStep1 && bioStep2) {
+                if (bioStep2.classList.contains('hidden') && bioStep1.classList.contains('hidden')) {
+                    bioStep1.classList.remove('hidden');
+                }
+            }
         }
     }
 
@@ -127,15 +131,23 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function showBioError(msg) {
+    let currentBioErrorKey = null;
+
+    function showBioError(errorKeyOrMsg) {
         if (bioErrorMsg) {
-            bioErrorMsg.textContent = msg;
+            currentBioErrorKey = errorKeyOrMsg;
+            const text = (window.t && typeof window.t === 'function') ? window.t(errorKeyOrMsg, errorKeyOrMsg) : errorKeyOrMsg;
+            bioErrorMsg.setAttribute('data-i18n', errorKeyOrMsg);
+            bioErrorMsg.textContent = text;
             bioErrorMsg.style.display = 'block';
         }
     }
 
     function hideBioError() {
+        currentBioErrorKey = null;
         if (bioErrorMsg) {
+            bioErrorMsg.removeAttribute('data-i18n');
+            bioErrorMsg.textContent = '';
             bioErrorMsg.style.display = 'none';
         }
     }
@@ -270,8 +282,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const faceVector = captureFaceVector();
             if (!faceVector || !Array.isArray(faceVector) || faceVector.length === 0) {
-                const scanErr = window.t ? window.t('bio_step2_hint') : 'Разместите лицо по центру каучуковой рамки.';
-                showBioError(scanErr);
+                showBioError('bio_step2_hint');
                 return;
             }
 
@@ -302,16 +313,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
                     checkAuth();
                 } else {
-                    const errKey = data.errorKey || data.error;
-                    const errorMsg = window.t ? window.t(errKey, data.error || 'Ошибка биометрической авторизации.') : (data.error || 'Ошибка биометрической авторизации.');
-                    showBioError(errorMsg);
+                    const errKey = data.errorKey || data.error || 'auth_credentials_mismatch';
+                    showBioError(errKey);
                     btnSubmitBiometrics.disabled = false;
                     btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
                 }
             } catch (err) {
                 console.error("Biometric processing error:", err);
-                const netErr = window.t ? window.t('err_network_submit', 'Ошибка соединения с сервером.') : 'Ошибка соединения с сервером.';
-                showBioError(netErr);
+                showBioError('err_network_submit');
                 btnSubmitBiometrics.disabled = false;
                 btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
             }
@@ -2850,20 +2859,48 @@ document.addEventListener("DOMContentLoaded", () => {
     // Подписка на автоматическую смену языка интерфейса
     if (window.i18n && window.i18n.onLanguageChange) {
         window.i18n.onLanguageChange(() => {
-            checkAuth();
-            renderShopItems();
-            loadProfileHistory();
-            if (window.updateMapUIElements) {
-                window.updateMapUIElements();
-            }
-            const pInput = document.getElementById('photo');
-            const pLabel = document.getElementById('photo-selected-name');
-            const sBtn = document.getElementById('submitBtn');
-            if (pInput && pLabel && pInput.files.length === 0) {
-                pLabel.textContent = window.t ? (window.t('take_photo_onsite') || window.t('photo_dummy') || "Сделать снимок на месте") : "Сделать снимок на месте";
-            }
-            if (sBtn && !sBtn.disabled) {
-                sBtn.textContent = window.t ? (window.t('submit_report') || window.t('btn_submit_report') || "Отправить отчет") : "Отправить отчет";
+            const isLoggedIn = (localStorage.getItem('vaisperia_isLoggedIn') === 'true' || localStorage.getItem('isAuth') === 'true');
+            const isGuest = (localStorage.getItem('vaisperia_isGuest') === 'true');
+
+            if (isLoggedIn || isGuest) {
+                // User is authenticated — refresh username display and dynamic UI elements
+                const rawUsername = isLoggedIn
+                    ? (localStorage.getItem('vaisperia_username') || (window.t ? window.t('default_citizen') : 'Citizen'))
+                    : (window.t ? window.t('guest_user', 'Guest') : 'Guest');
+                const homeUserEl = document.getElementById('home-username');
+                const profileUserTag = document.getElementById('profile-username-tag');
+                if (homeUserEl) homeUserEl.textContent = rawUsername;
+                if (profileUserTag) profileUserTag.textContent = rawUsername;
+
+                renderShopItems();
+                loadProfileHistory();
+                if (window.updateMapUIElements) {
+                    window.updateMapUIElements();
+                }
+                const pInput = document.getElementById('photo');
+                const pLabel = document.getElementById('photo-selected-name');
+                const sBtn = document.getElementById('submitBtn');
+                if (pInput && pLabel && pInput.files.length === 0) {
+                    pLabel.textContent = window.t ? (window.t('take_photo_onsite') || window.t('photo_dummy') || 'Take photo on site') : 'Take photo on site';
+                }
+                if (sBtn && !sBtn.disabled) {
+                    sBtn.textContent = window.t ? (window.t('submit_report') || window.t('btn_submit_report') || 'Submit report') : 'Submit report';
+                }
+            } else {
+                // User is on the login/biometric screen — only re-render bio error text,
+                // DO NOT call checkAuth() to avoid resetting the active form step.
+                if (currentBioErrorKey && bioErrorMsg && bioErrorMsg.style.display !== 'none') {
+                    const updated = window.t ? window.t(currentBioErrorKey, currentBioErrorKey) : currentBioErrorKey;
+                    bioErrorMsg.textContent = updated;
+                }
+
+                // Update the dynamic button labels on step 2 if visible
+                if (btnSubmitBiometrics && !btnSubmitBiometrics.disabled) {
+                    btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Complete Biometrics') : 'Complete Biometrics';
+                }
+                if (btnBackToStep1) {
+                    btnBackToStep1.textContent = window.t ? window.t('login_via_gmail', 'Sign in via Gmail / Password') : 'Sign in via Gmail / Password';
+                }
             }
         });
     }
