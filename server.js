@@ -206,6 +206,13 @@ function calculateEuclideanDistance(v1, v2) {
   return Math.sqrt(sum);
 }
 
+// Admin Authentication Helper
+function verifyAdminAuth(req) {
+  const pass = req.headers['x-admin-password'] || req.query.password || (req.body && (req.body.adminPassword || req.body.password));
+  const expected = process.env.ADMIN_PASSWORD || 'Nuraysfan09';
+  return pass === expected;
+}
+
 // API Endpoints
 
 // 1. Universal Biometric Auth / Registration Endpoint
@@ -257,6 +264,16 @@ const handleBiometricAuth = async (req, res) => {
       const passwordMatches = inputPassword.length > 0 && inputPassword === dbPassword;
 
       if (usernameMatches && emailMatches && passwordMatches) {
+        // Track login activity
+        try {
+          await pool.query(
+            'UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_login_at = CURRENT_TIMESTAMP WHERE id = $1',
+            [matchedUser.id]
+          );
+        } catch (uErr) {
+          console.error('Error updating login activity stats:', uErr);
+        }
+
         return res.status(200).json({ 
           success: true, 
           message: 'Biometric authentication successful!',
@@ -305,7 +322,7 @@ const handleBiometricAuth = async (req, res) => {
     // All fields valid & unique -> Create new account
     const vectorStr = JSON.stringify(faceVector);
     const insertResult = await pool.query(
-      `INSERT INTO users (username, password, email, face_vector) VALUES ($1, $2, $3, $4) RETURNING id`,
+      `INSERT INTO users (username, password, email, face_vector, login_count, last_login_at) VALUES ($1, $2, $3, $4, 1, CURRENT_TIMESTAMP) RETURNING id`,
       [inputUsername, inputPassword, inputEmail, vectorStr]
     );
 
@@ -358,19 +375,135 @@ app.post('/api/forgot-password', async (req, res) => {
   }
 });
 
-// 2. Protected Admin Endpoint: User list & statistics
-app.get('/api/admin/users', async (req, res) => {
-  const adminPass = req.headers['x-admin-password'] || req.query.password;
-  if (adminPass !== 'admin123') {
+// 2. Protected Admin Endpoints
+
+// GET /api/admin/stats - Executive Smart City Analytics
+app.get('/api/admin/stats', async (req, res) => {
+  if (!verifyAdminAuth(req)) {
     return res.status(403).json({ error: 'Доступ запрещен. Неверный пароль администратора.' });
   }
 
   try {
-    const { rows } = await pool.query('SELECT id, username, created_at FROM users ORDER BY created_at DESC');
+    const usersRes = await pool.query('SELECT COUNT(*) FROM users');
+    const totalUsers = parseInt(usersRes.rows[0].count, 10) || 0;
+
+    const allTimeRes = await pool.query('SELECT COUNT(*) FROM problems');
+    const allTimeReports = parseInt(allTimeRes.rows[0].count, 10) || 0;
+
+    const monthRes = await pool.query(
+      "SELECT COUNT(*) FROM problems WHERE timestamp >= DATE_TRUNC('month', CURRENT_TIMESTAMP)"
+    );
+    const monthReports = parseInt(monthRes.rows[0].count, 10) || 0;
+
+    const weekRes = await pool.query(
+      "SELECT COUNT(*) FROM problems WHERE timestamp >= DATE_TRUNC('week', CURRENT_TIMESTAMP)"
+    );
+    const weekReports = parseInt(weekRes.rows[0].count, 10) || 0;
+
+    const statusRes = await pool.query('SELECT status, COUNT(*) FROM problems GROUP BY status');
+    const statusCounts = { new: 0, in_progress: 0, resolved: 0 };
+    statusRes.rows.forEach(r => {
+      const st = r.status || 'new';
+      statusCounts[st] = parseInt(r.count, 10) || 0;
+    });
+
+    const activeIssues = statusCounts.new + statusCounts.in_progress;
+    const resolvedCount = statusCounts.resolved;
+    const resolutionRate = allTimeReports > 0 ? ((resolvedCount / allTimeReports) * 100).toFixed(1) + '%' : '0%';
+
+    res.json({
+      success: true,
+      totalUsers,
+      reports: {
+        allTime: allTimeReports,
+        thisMonth: monthReports,
+        thisWeek: weekReports
+      },
+      statusBreakdown: statusCounts,
+      activeIssues,
+      resolutionRate
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/users - Citizen Registry with detailed metrics
+app.get('/api/admin/users', async (req, res) => {
+  if (!verifyAdminAuth(req)) {
+    return res.status(403).json({ error: 'Доступ запрещен. Неверный пароль администратора.' });
+  }
+
+  try {
+    const { rows } = await pool.query(`
+      SELECT 
+        u.id,
+        u.username,
+        u.email,
+        u.created_at,
+        COALESCE(u.login_count, 0) AS login_count,
+        u.last_login_at,
+        COUNT(p.id) AS total_reports,
+        COUNT(CASE WHEN p.timestamp >= DATE_TRUNC('month', CURRENT_TIMESTAMP) THEN 1 END) AS month_reports
+      FROM users u
+      LEFT JOIN problems p ON (LOWER(p.user_id_name) = LOWER(u.username) OR LOWER(p.username) = LOWER(u.username))
+      GROUP BY u.id, u.username, u.email, u.created_at, u.login_count, u.last_login_at
+      ORDER BY u.created_at DESC
+    `);
+
     res.json({
       success: true,
       totalUsers: rows.length,
       users: rows
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/impersonate - Admin User Impersonation Endpoint
+app.post('/api/admin/impersonate', async (req, res) => {
+  if (!verifyAdminAuth(req)) {
+    return res.status(403).json({ error: 'Доступ запрещен. Неверный пароль администратора.' });
+  }
+
+  const { userId, username } = req.body;
+  if (!userId && !username) {
+    return res.status(400).json({ error: 'Укажите ID или никнейм пользователя для имперсонации.' });
+  }
+
+  try {
+    let userQuery;
+    let params;
+    if (userId) {
+      userQuery = 'SELECT id, username, email FROM users WHERE id = $1';
+      params = [userId];
+    } else {
+      userQuery = 'SELECT id, username, email FROM users WHERE LOWER(username) = LOWER($1)';
+      params = [username];
+    }
+
+    const { rows } = await pool.query(userQuery, params);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден.' });
+    }
+
+    const targetUser = rows[0];
+
+    // Increment login count for impersonated session
+    await pool.query(
+      'UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_login_at = CURRENT_TIMESTAMP WHERE id = $1',
+      [targetUser.id]
+    );
+
+    res.json({
+      success: true,
+      message: `Успешная инициализация сессии для пользователя ${targetUser.username}!`,
+      user: {
+        userId: targetUser.id,
+        username: targetUser.username,
+        email: targetUser.email || `${targetUser.username.toLowerCase()}@vaisperia.uz`
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

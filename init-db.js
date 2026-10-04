@@ -35,6 +35,8 @@ async function initDb() {
         password TEXT NOT NULL,
         face_vector TEXT NOT NULL,
         email TEXT,
+        login_count INTEGER DEFAULT 0,
+        last_login_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -63,6 +65,8 @@ async function initDb() {
 
     // Add metadata columns if missing
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER DEFAULT 0;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;`);
     await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS username TEXT;`);
     await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS category TEXT;`);
     await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'new';`);
