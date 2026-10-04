@@ -1181,7 +1181,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const avatarUrl = problem.user_avatar || getUserAvatar(authorName);
 
             const avatarMarkup = avatarUrl 
-                ? `<img src="${avatarUrl}" class="author-avatar-img" alt="${authorName}">`
+                ? `<img src="${avatarUrl}" class="author-avatar-img" alt="${authorName}" onerror="this.onerror=null;this.outerHTML='<div class=\\'author-avatar-letter\\'>${authorName.substring(0, 2).toUpperCase()}</div>';">`
                 : `<div class="author-avatar-letter">${authorName.substring(0, 2).toUpperCase()}</div>`;
 
             return `
@@ -1202,7 +1202,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const getPopupContent = (problem, state) => {
             let html = `<div class="popup-container">`;
             if (problem.photo_url) {
-                html += `<img src="${problem.photo_url}" class="popup-img" alt="Problem photo">`;
+                html += `<img src="${problem.photo_url}" class="popup-img" alt="Problem photo" onerror="this.onerror=null;this.style.display='none';">`;
             }
             html += getAuthorHtml(problem);
             const descLabel = window.t ? window.t('desc_label_short', 'Описание:') : 'Описание:';
@@ -1286,7 +1286,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (currentProblem.photo_url) {
                 imgHtml = `
                     <div class="sheet-img-container">
-                        <img src="${currentProblem.photo_url}" class="sheet-img" alt="Фото проблемы">
+                        <img src="${currentProblem.photo_url}" class="sheet-img" alt="Фото проблемы" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'sheet-no-img\\'>📷 Не удалось загрузить фото</div>';">
                         ${carouselControls}
                     </div>
                 `;
@@ -2546,7 +2546,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     let imgHtml = "";
                     if (prob.photo_url) {
-                        imgHtml = `<img src="${prob.photo_url}" alt="Фото заявки" class="history-item-img">`;
+                        imgHtml = `<img src="${prob.photo_url}" alt="Фото заявки" class="history-item-img" onerror="this.onerror=null;this.outerHTML='<div class=\\'history-item-noimg\\'>📷</div>';">`;
                     } else {
                         imgHtml = `<div class="history-item-noimg">📷</div>`;
                     }

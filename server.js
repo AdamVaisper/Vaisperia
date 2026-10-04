@@ -44,6 +44,17 @@ app.use(express.static(path.join(__dirname, 'public'), {
         res.setHeader('Expires', '0');
     }
 }));
+// Explicitly serve /uploads so photo_url links always resolve correctly
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
+}));
+
 
 // Configure Multer for image uploads (5MB Limit)
 const storage = multer.diskStorage({
