@@ -33,7 +33,7 @@ const pool = new Pool({
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Express Static with Cache-Busting Headers
 app.use(express.static(path.join(__dirname, 'public'), {
     etag: false,
@@ -57,20 +57,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
 
 
 // Configure Multer for image uploads (5MB Limit)
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, 'public', 'uploads');
-    // Ensure the uploads directory exists
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage: storage,
@@ -576,7 +563,8 @@ app.post('/api/problems', (req, res) => {
     let photoUrl = null;
 
     if (req.file) {
-      photoUrl = '/uploads/' + req.file.filename;
+      const base64Data = req.file.buffer.toString('base64');
+      photoUrl = `data:${req.file.mimetype};base64,${base64Data}`;
     }
 
     if (!description || !latitude || !longitude) {

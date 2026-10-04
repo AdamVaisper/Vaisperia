@@ -195,6 +195,57 @@ function sendPhotoMultipart(chatId, filePath, caption, replyMarkup) {
   });
 }
 
+// Helper to send photo via multipart/form-data from Buffer
+function sendPhotoBufferMultipart(chatId, buffer, caption, replyMarkup) {
+  return new Promise((resolve, reject) => {
+    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+    const filename = 'photo.jpg';
+
+    let postData = [];
+    postData.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${chatId}\r\n`));
+    postData.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`));
+    postData.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="parse_mode"\r\n\r\nHTML\r\n`));
+
+    if (replyMarkup) {
+      postData.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="reply_markup"\r\n\r\n${JSON.stringify(replyMarkup)}\r\n`));
+    }
+
+    postData.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="${filename}"\r\nContent-Type: image/jpeg\r\n\r\n`));
+    postData.push(buffer);
+    postData.push(Buffer.from(`\r\n--${boundary}--\r\n`));
+
+    const totalPayload = Buffer.concat(postData);
+
+    const options = {
+      hostname: 'api.telegram.org',
+      port: 443,
+      path: `/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`,
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': totalPayload.length
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(body);
+          resolve(json);
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+
+    req.on('error', err => reject(err));
+    req.write(totalPayload);
+    req.end();
+  });
+}
+
 // Dispatch report to Telegram group
 async function sendReportToGroup(report, pool, publicDir) {
   const chatId = getChatIdForCategory(report.category);
@@ -205,11 +256,17 @@ async function sendReportToGroup(report, pool, publicDir) {
 
   try {
     if (report.photo_url) {
-      const relativePath = report.photo_url.startsWith('/') ? report.photo_url.slice(1) : report.photo_url;
-      const localFilePath = path.join(publicDir || path.join(__dirname, 'public'), relativePath);
+      if (report.photo_url.startsWith('data:image/')) {
+        const base64Data = report.photo_url.split(',')[1];
+        const buffer = Buffer.from(base64Data, 'base64');
+        response = await sendPhotoBufferMultipart(chatId, buffer, caption, replyMarkup);
+      } else {
+        const relativePath = report.photo_url.startsWith('/') ? report.photo_url.slice(1) : report.photo_url;
+        const localFilePath = path.join(publicDir || path.join(__dirname, 'public'), relativePath);
 
-      if (fs.existsSync(localFilePath)) {
-        response = await sendPhotoMultipart(chatId, localFilePath, caption, replyMarkup);
+        if (fs.existsSync(localFilePath)) {
+          response = await sendPhotoMultipart(chatId, localFilePath, caption, replyMarkup);
+        }
       }
     }
 
