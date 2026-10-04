@@ -1,5 +1,5 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const multer  = require('multer');
 const path = require('path');
 const cors = require('cors');
@@ -7,7 +7,28 @@ const fs = require('fs');
 const { sendReportToGroup, initTelegramBot } = require('./telegramBot');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
+
+// Load .env if present
+const envPath = path.resolve(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  envContent.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const [key, ...vals] = trimmed.split('=');
+      if (key && vals.length > 0) {
+        process.env[key.trim()] = vals.join('=').trim();
+      }
+    }
+  });
+}
+
+// PostgreSQL Pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres.gfbukhbuuemxsensrsvm:Nuraysfan09@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres',
+  ssl: { rejectUnauthorized: false }
+});
 
 // Middleware
 app.use(cors());
@@ -52,68 +73,127 @@ const upload = multer({
   }
 });
 
-// Database Connection
-const dbPath = path.resolve(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) console.error('Could not connect to database', err);
-  else console.log('Connected to SQLite database');
+// Ensure tables exist on startup
+async function initDb() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        face_vector TEXT NOT NULL,
+        email TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Users table ready');
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS problems (
+        id SERIAL PRIMARY KEY,
+        photo_url TEXT,
+        description TEXT NOT NULL,
+        latitude DOUBLE PRECISION NOT NULL,
+        longitude DOUBLE PRECISION NOT NULL,
+        username TEXT,
+        category TEXT,
+        status TEXT DEFAULT 'new',
+        resolved_at TIMESTAMPTZ,
+        telegram_message_id BIGINT,
+        telegram_chat_id TEXT,
+        is_anonymous INTEGER DEFAULT 0,
+        user_id_name TEXT,
+        user_avatar TEXT,
+        timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Problems table ready');
+
+    // Add columns if missing (idempotent)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;`);
+    await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS username TEXT;`);
+    await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS category TEXT;`);
+    await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'new';`);
+    await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;`);
+    await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS telegram_message_id BIGINT;`);
+    await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;`);
+    await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS is_anonymous INTEGER DEFAULT 0;`);
+    await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS user_id_name TEXT;`);
+    await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS user_avatar TEXT;`);
+
+    // Preserve history: assign legacy/unassigned records to Adam_Vaisper
+    await pool.query(`
+      UPDATE problems SET username = 'Adam_Vaisper'
+      WHERE username IS NULL OR username = '' OR username = 'Muratbek_92'
+    `);
+    console.log('Legacy problem records assigned to Adam_Vaisper');
+    console.log('Connected to PostgreSQL (Supabase)');
+  } catch (err) {
+    console.error('DB init error:', err.message);
+  }
+}
+
+// Initialize Telegram Dispatcher Bot (pass pool so telegramBot can run pg queries)
+initDb().then(() => {
+  initTelegramBot(pool);
 });
 
-// Ensure Users and Problems tables exist
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      face_vector TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `, (err) => {
-    if (err) console.error('Error creating users table', err);
-    else console.log('Users table ready');
-  });
+// Helper: Robust Date Parsing to Epoch Milliseconds
+function parseDateMs(dateVal) {
+  if (!dateVal) return null;
+  if (typeof dateVal === 'number') return dateVal;
+  if (dateVal instanceof Date) return dateVal.getTime();
+  let str = String(dateVal).trim();
+  if (!str.includes('T') && !str.includes('Z') && str.includes(' ')) {
+    str = str.replace(' ', 'T') + 'Z';
+  } else if (!str.endsWith('Z') && !str.includes('+') && str.includes('T')) {
+    str = str + 'Z';
+  }
+  const ms = Date.parse(str);
+  return isNaN(ms) ? null : ms;
+}
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS problems (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      photo_url TEXT,
-      description TEXT NOT NULL,
-      latitude REAL NOT NULL,
-      longitude REAL NOT NULL,
-      username TEXT,
-      category TEXT,
-      status TEXT DEFAULT 'new',
-      resolved_at DATETIME,
-      telegram_message_id INTEGER,
-      telegram_chat_id TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `, (err) => {
-    if (err) console.error('Error creating problems table', err);
-    else console.log('Problems table ready');
-  });
+// Backend Report Lifecycle Worker
+// Rules:
+// 1. Red (new): After 24 hours from creation timestamp -> automatically transition to Yellow (in_progress). Never deleted.
+// 2. Yellow (in_progress): Indefinite. Never deleted by cleanup tasks.
+// 3. Green (resolved): Auto-deleted 24 hours AFTER resolution date (resolved_at > 24h), not creation date.
+async function updateReportLifecycle() {
+  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+  try {
+    // 🔴 new -> 🟡 in_progress after 24h from creation
+    const updateResult = await pool.query(`
+      UPDATE problems
+      SET status = 'in_progress'
+      WHERE status = 'new'
+        AND timestamp IS NOT NULL
+        AND (EXTRACT(EPOCH FROM (NOW() - timestamp)) * 1000) >= $1
+      RETURNING id
+    `, [TWENTY_FOUR_HOURS_MS]);
+    if (updateResult.rowCount > 0) {
+      console.log(`[Lifecycle] Auto-updated ${updateResult.rowCount} report(s) from 'new' to 'in_progress' (>=24h old)`);
+    }
 
-  // Migrations: Add new metadata columns if missing
-  db.run(`ALTER TABLE users ADD COLUMN email TEXT`, () => {});
-  db.run(`ALTER TABLE problems ADD COLUMN username TEXT`, () => {});
-  db.run(`ALTER TABLE problems ADD COLUMN category TEXT`, () => {});
-  db.run(`ALTER TABLE problems ADD COLUMN status TEXT DEFAULT 'new'`, () => {});
-  db.run(`ALTER TABLE problems ADD COLUMN resolved_at DATETIME`, () => {});
-  db.run(`ALTER TABLE problems ADD COLUMN telegram_message_id INTEGER`, () => {});
-  db.run(`ALTER TABLE problems ADD COLUMN telegram_chat_id TEXT`, () => {});
-  db.run(`ALTER TABLE problems ADD COLUMN is_anonymous INTEGER DEFAULT 0`, () => {});
-  db.run(`ALTER TABLE problems ADD COLUMN user_id_name TEXT`, () => {});
-  db.run(`ALTER TABLE problems ADD COLUMN user_avatar TEXT`, () => {});
+    // 🟢 resolved -> DELETE after 24h from resolved_at
+    const deleteResult = await pool.query(`
+      DELETE FROM problems
+      WHERE status = 'resolved'
+        AND resolved_at IS NOT NULL
+        AND (EXTRACT(EPOCH FROM (NOW() - resolved_at)) * 1000) >= $1
+      RETURNING id
+    `, [TWENTY_FOUR_HOURS_MS]);
+    if (deleteResult.rowCount > 0) {
+      console.log(`[Lifecycle] Auto-deleted ${deleteResult.rowCount} resolved report(s) (resolved >=24h ago)`);
+    }
+  } catch (err) {
+    console.error('Error in updateReportLifecycle:', err.message);
+  }
+}
 
-  // Preserve history for Adam_Vaisper: associate all legacy/unassigned records to Adam_Vaisper
-  db.run(`UPDATE problems SET username = 'Adam_Vaisper' WHERE username IS NULL OR username = '' OR username = 'Muratbek_92'`, (err) => {
-    if (!err) console.log('Legacy problem records assigned to Adam_Vaisper');
-  });
-});
-
-// Initialize Telegram Dispatcher Bot
-initTelegramBot(db);
+// Start periodic background lifecycle worker (every 60 seconds)
+setInterval(() => {
+  updateReportLifecycle();
+}, 60 * 1000);
 
 // Helper: Calculate Euclidean Distance between 2 vectors
 function calculateEuclideanDistance(v1, v2) {
@@ -129,7 +209,7 @@ function calculateEuclideanDistance(v1, v2) {
 // API Endpoints
 
 // 1. Universal Biometric Auth / Registration Endpoint
-const handleBiometricAuth = (req, res) => {
+const handleBiometricAuth = async (req, res) => {
   const { username, password, email, faceVector } = req.body;
 
   if (!faceVector || !Array.isArray(faceVector) || faceVector.length === 0) {
@@ -140,11 +220,11 @@ const handleBiometricAuth = (req, res) => {
     });
   }
 
-  // Check face vector in SQLite database
-  db.all('SELECT id, username, email, password, face_vector FROM users', [], (err, existingUsers) => {
-    if (err) {
-      return res.status(500).json({ success: false, error: 'Database error checking biometrics.' });
-    }
+  try {
+    // Check face vector in PostgreSQL database
+    const { rows: existingUsers } = await pool.query(
+      'SELECT id, username, email, password, face_vector FROM users'
+    );
 
     let matchedUser = null;
 
@@ -210,70 +290,62 @@ const handleBiometricAuth = (req, res) => {
     }
 
     // Check if Username or Email is already registered by another account
-    db.get(
-      'SELECT id FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)', 
-      [inputUsername, inputEmail], 
-      (checkErr, existingAcc) => {
-        if (checkErr) {
-          return res.status(500).json({ success: false, error: checkErr.message });
-        }
-        if (existingAcc) {
-          return res.status(400).json({ 
-            success: false, 
-            errorKey: 'user_already_exists',
-            error: 'User with this username or Gmail already exists!' 
-          });
-        }
-
-        // All fields valid & unique -> Create new account
-        const stmt = db.prepare(`
-          INSERT INTO users (username, password, email, face_vector)
-          VALUES (?, ?, ?, ?)
-        `);
-
-        const vectorStr = JSON.stringify(faceVector);
-        stmt.run([inputUsername, inputPassword, inputEmail, vectorStr], function(insertErr) {
-          if (insertErr) {
-            if (insertErr.message.includes('UNIQUE constraint failed')) {
-              return res.status(400).json({ 
-                success: false, 
-                errorKey: 'user_already_exists',
-                error: 'User with this username or Gmail already exists!' 
-              });
-            }
-            return res.status(500).json({ success: false, error: insertErr.message });
-          }
-
-          return res.status(201).json({ 
-            success: true, 
-            message: 'Registration and biometric control successfully completed!',
-            isNewUser: true,
-            userId: this.lastID,
-            username: inputUsername,
-            email: inputEmail
-          });
-        });
-        stmt.finalize();
-      }
+    const { rows: existingAcc } = await pool.query(
+      'SELECT id FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($2)', 
+      [inputUsername, inputEmail]
     );
-  });
+    if (existingAcc.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        errorKey: 'user_already_exists',
+        error: 'User with this username or Gmail already exists!' 
+      });
+    }
+
+    // All fields valid & unique -> Create new account
+    const vectorStr = JSON.stringify(faceVector);
+    const insertResult = await pool.query(
+      `INSERT INTO users (username, password, email, face_vector) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [inputUsername, inputPassword, inputEmail, vectorStr]
+    );
+
+    return res.status(201).json({ 
+      success: true, 
+      message: 'Registration and biometric control successfully completed!',
+      isNewUser: true,
+      userId: insertResult.rows[0].id,
+      username: inputUsername,
+      email: inputEmail
+    });
+
+  } catch (err) {
+    if (err.message && (err.message.includes('unique') || err.message.includes('duplicate'))) {
+      return res.status(400).json({ 
+        success: false, 
+        errorKey: 'user_already_exists',
+        error: 'User with this username or Gmail already exists!' 
+      });
+    }
+    return res.status(500).json({ success: false, error: err.message });
+  }
 };
 
 app.post('/api/register', handleBiometricAuth);
 app.post('/api/biometric-auth', handleBiometricAuth);
 
 // Endpoint: Forgot password reset simulation
-app.post('/api/forgot-password', (req, res) => {
+app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ error: 'Укажите ваш зарегистрированный Gmail адрес.' });
   }
 
-  db.get('SELECT id, username, email FROM users WHERE LOWER(email) = ?', [email.trim().toLowerCase()], (err, user) => {
-    if (err) {
-      return res.status(500).json({ error: 'Ошибка при доступе к базе данных.' });
-    }
-    if (!user) {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, username, email FROM users WHERE LOWER(email) = $1',
+      [email.trim().toLowerCase()]
+    );
+    if (rows.length === 0) {
       return res.status(404).json({ error: 'Пользователь с таким Gmail адресом не найден.' });
     }
 
@@ -281,26 +353,28 @@ app.post('/api/forgot-password', (req, res) => {
       success: true,
       message: `Ссылка для восстановления и подтверждения отправлена на ${email}! Проверьте ваш почтовый ящик.`
     });
-  });
+  } catch (err) {
+    return res.status(500).json({ error: 'Ошибка при доступе к базе данных.' });
+  }
 });
 
 // 2. Protected Admin Endpoint: User list & statistics
-app.get('/api/admin/users', (req, res) => {
+app.get('/api/admin/users', async (req, res) => {
   const adminPass = req.headers['x-admin-password'] || req.query.password;
   if (adminPass !== 'admin123') {
     return res.status(403).json({ error: 'Доступ запрещен. Неверный пароль администратора.' });
   }
 
-  db.all('SELECT id, username, created_at FROM users ORDER BY created_at DESC', [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+  try {
+    const { rows } = await pool.query('SELECT id, username, created_at FROM users ORDER BY created_at DESC');
     res.json({
       success: true,
       totalUsers: rows.length,
       users: rows
     });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 3. Serve Admin Panel Page
@@ -309,12 +383,15 @@ app.get('/admin', (req, res) => {
 });
 
 // 4. Get all problems
-app.get('/api/problems', (req, res) => {
-  db.all('SELECT * FROM problems ORDER BY timestamp DESC', [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+app.get('/api/problems', async (req, res) => {
+  try {
+    await updateReportLifecycle();
+  } catch (lifecycleErr) {
+    console.error('Error executing lifecycle update on GET /api/problems:', lifecycleErr);
+  }
+
+  try {
+    const { rows } = await pool.query('SELECT * FROM problems ORDER BY timestamp DESC');
     // Enforce strict anonymity override on API output (never leak real name or custom avatar)
     const sanitizedRows = (rows || []).map(prob => {
       if (prob.is_anonymous == 1 || prob.username === 'Анонимный гражданин' || prob.username === 'Гость') {
@@ -328,12 +405,14 @@ app.get('/api/problems', (req, res) => {
       return prob;
     });
     res.json(sanitizedRows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 5. Report a new problem (Strictly CREATE / INSERT new record with unique ID)
 app.post('/api/problems', (req, res) => {
-  upload.single('photo')(req, res, function (err) {
+  upload.single('photo')(req, res, async function (err) {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'File size limit exceeded. Maximum allowed size is 5MB.' });
@@ -366,19 +445,16 @@ app.post('/api/problems', (req, res) => {
     const reportCategory = (category && category.trim()) ? category.trim() : 'Другое';
     const avatarData = isAnon ? '' : (userAvatar || '');
 
-    // ALWAYS INSERT A BRAND NEW RECORD WITH UNIQUE ID (NO UPSERT / NO UPDATE BY COORDINATES)
-    const stmt = db.prepare(`
-      INSERT INTO problems (photo_url, description, latitude, longitude, username, category, status, is_anonymous, user_id_name, user_avatar)
-      VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?, ?)
-    `);
+    try {
+      // ALWAYS INSERT A BRAND NEW RECORD WITH UNIQUE ID (NO UPSERT / NO UPDATE BY COORDINATES)
+      const result = await pool.query(`
+        INSERT INTO problems (photo_url, description, latitude, longitude, username, category, status, is_anonymous, user_id_name, user_avatar)
+        VALUES ($1, $2, $3, $4, $5, $6, 'new', $7, $8, $9)
+        RETURNING id, timestamp
+      `, [photoUrl, description, latitude, longitude, displayUser, reportCategory, isAnon ? 1 : 0, realUser, avatarData]);
 
-    stmt.run([photoUrl, description, latitude, longitude, displayUser, reportCategory, isAnon ? 1 : 0, realUser, avatarData], function(err) {
-      if (err) {
-         res.status(500).json({ error: err.message });
-         return;
-      }
-
-      const reportId = this.lastID;
+      const reportId = result.rows[0].id;
+      const reportTimestamp = result.rows[0].timestamp;
       const newReport = {
         id: reportId,
         photo_url: photoUrl,
@@ -390,15 +466,16 @@ app.post('/api/problems', (req, res) => {
         status: 'new',
         user_avatar: avatarData,
         is_anonymous: isAnon ? 1 : 0,
-        timestamp: new Date().toISOString()
+        timestamp: reportTimestamp ? reportTimestamp.toISOString() : new Date().toISOString()
       };
 
       // Dispatch notification asynchronously to Telegram Department Group
-      sendReportToGroup(newReport, db, path.join(__dirname, 'public'));
+      sendReportToGroup(newReport, pool, path.join(__dirname, 'public'));
 
       res.status(201).json({ id: reportId, success: true });
-    });
-    stmt.finalize();
+    } catch (insertErr) {
+      res.status(500).json({ error: insertErr.message });
+    }
   });
 });
 

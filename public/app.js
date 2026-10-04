@@ -948,7 +948,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Авто-переход Красный ('new') -> Желтый ('in_progress') через 24 часа с момента создания
             const now = Date.now();
-            if (status === 'new' && (now - timeMs >= 24 * 60 * 60 * 1000 || isNextCalendarDay(timeMs, now))) {
+            if (status === 'new' && (now - timeMs >= 24 * 60 * 60 * 1000)) {
                 status = 'in_progress';
             }
 
@@ -1393,14 +1393,14 @@ document.addEventListener("DOMContentLoaded", () => {
                             let state = getProblemState(problem);
                             let stateChanged = false;
 
-                            // Переход в работу на след. календарные сутки
-                            if (state.status === 'new' && isNextCalendarDay(state.createdAt, now)) {
+                            // Переход в работу через 24 часа с момента создания
+                            if (state.status === 'new' && (now - state.createdAt >= 24 * 60 * 60 * 1000)) {
                                 state.status = 'in_progress';
                                 stateChanged = true;
                             }
 
-                            // Скрытие старых закрытых заявок на след. день
-                            if (state.status === 'resolved' && state.resolvedAt && isNextCalendarDay(state.resolvedAt, now)) {
+                            // Скрытие старых закрытых заявок через 24 часа ПОСЛЕ решения
+                            if (state.status === 'resolved' && state.resolvedAt && (now - state.resolvedAt >= 24 * 60 * 60 * 1000)) {
                                 return; 
                             }
 
@@ -1426,8 +1426,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         data.forEach(problem => {
                             let state = getProblemState(problem);
 
-                            // Скрытие закрытых заявок прошедших дней
-                            if (state.status === 'resolved' && state.resolvedAt && isNextCalendarDay(state.resolvedAt, now)) {
+                            // Скрытие закрытых заявок через 24 часа ПОСЛЕ решения
+                            if (state.status === 'resolved' && state.resolvedAt && (now - state.resolvedAt >= 24 * 60 * 60 * 1000)) {
                                 const idx = allMarkersData.findIndex(item => item.problem.id === problem.id);
                                 if (idx !== -1) {
                                     map.removeLayer(allMarkersData[idx].marker);

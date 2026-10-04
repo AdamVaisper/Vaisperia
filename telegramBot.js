@@ -196,7 +196,7 @@ function sendPhotoMultipart(chatId, filePath, caption, replyMarkup) {
 }
 
 // Dispatch report to Telegram group
-async function sendReportToGroup(report, db, publicDir) {
+async function sendReportToGroup(report, pool, publicDir) {
   const chatId = getChatIdForCategory(report.category);
   const caption = buildMessageCaption(report);
   const replyMarkup = getInlineKeyboard(report.id, report.status || 'new');
@@ -225,14 +225,15 @@ async function sendReportToGroup(report, db, publicDir) {
 
     if (response && response.ok && response.result) {
       const msgId = response.result.message_id;
-      if (db && report.id) {
-        db.run(
-          `UPDATE problems SET telegram_message_id = ?, telegram_chat_id = ? WHERE id = ?`,
-          [msgId, String(chatId), report.id],
-          (err) => {
-            if (err) console.error('Error updating telegram msg id in DB:', err);
-          }
-        );
+      if (pool && report.id) {
+        try {
+          await pool.query(
+            `UPDATE problems SET telegram_message_id = $1, telegram_chat_id = $2 WHERE id = $3`,
+            [msgId, String(chatId), report.id]
+          );
+        } catch (dbErr) {
+          console.error('Error updating telegram msg id in DB:', dbErr.message);
+        }
       }
     }
   } catch (err) {
@@ -240,9 +241,11 @@ async function sendReportToGroup(report, db, publicDir) {
   }
 }
 
+
 // Long Polling & Media Proof State Tracking
 let pollingOffset = 0;
-let dbInstance = null;
+let pgPool = null;
+
 
 // Track active report resolutions waiting for photo/video proof
 // Key: chatId, Value: { reportId, chatId, cardMsgId, promptMsgId, userTag }
@@ -289,13 +292,15 @@ async function handleCallbackQuery(query) {
       const reportId = parseInt(data.replace('status_in_progress_', ''), 10);
       if (!reportId || isNaN(reportId)) return;
 
-      dbInstance.get('SELECT * FROM problems WHERE id = ?', [reportId], async (err, problem) => {
-        if (err || !problem) {
+      try {
+        const { rows } = await pgPool.query('SELECT * FROM problems WHERE id = $1', [reportId]);
+        const problem = rows[0];
+        if (!problem) {
           await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Заявка не найдена.' });
           return;
         }
 
-        dbInstance.run('UPDATE problems SET status = ? WHERE id = ?', ['in_progress', reportId]);
+        await pgPool.query('UPDATE problems SET status = $1 WHERE id = $2', ['in_progress', reportId]);
         problem.status = 'in_progress';
 
         const updatedCaption = buildMessageCaption(problem, `<b>Статус:</b> 🟡 В работе (Взял: ${userTag})`);
@@ -326,13 +331,19 @@ async function handleCallbackQuery(query) {
           callback_query_id: query.id,
           text: 'Заявка принята в работу 🟡'
         });
-      });
+      } catch (dbErr) {
+        console.error('DB error in status_in_progress handler:', dbErr.message);
+        await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Ошибка базы данных.' });
+      }
+
     } else if (data.startsWith('status_resolve_init_')) {
       const reportId = parseInt(data.replace('status_resolve_init_', ''), 10);
       if (!reportId || isNaN(reportId)) return;
 
-      dbInstance.get('SELECT * FROM problems WHERE id = ?', [reportId], async (err, problem) => {
-        if (err || !problem) {
+      try {
+        const { rows } = await pgPool.query('SELECT * FROM problems WHERE id = $1', [reportId]);
+        const problem = rows[0];
+        if (!problem) {
           await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Заявка не найдена.' });
           return;
         }
@@ -371,7 +382,10 @@ async function handleCallbackQuery(query) {
           callback_query_id: query.id,
           text: 'Отправьте фото/видео ответа (Reply) на сообщение для подтверждения!'
         });
-      });
+      } catch (dbErr) {
+        console.error('DB error in status_resolve_init handler:', dbErr.message);
+        await callTelegramApi('answerCallbackQuery', { callback_query_id: query.id, text: 'Ошибка базы данных.' });
+      }
     }
   } catch (err) {
     console.error('Error handling callback query:', err);
@@ -380,6 +394,7 @@ async function handleCallbackQuery(query) {
     } catch(e) {}
   }
 }
+
 
 // Handle Incoming Media Messages (Photo / Video Proof)
 async function handleIncomingMessage(msg) {
@@ -406,64 +421,69 @@ async function handleIncomingMessage(msg) {
     const { reportId, cardMsgId, userTag } = pendingEntry;
     const nowIso = new Date().toISOString();
 
-    if (!dbInstance) return;
+    if (!pgPool) return;
 
-    dbInstance.run('UPDATE problems SET status = ?, resolved_at = ? WHERE id = ?', ['resolved', nowIso, reportId], function(err) {
-      if (err) console.error('Error setting problem status to resolved:', err);
+    try {
+      await pgPool.query(
+        'UPDATE problems SET status = $1, resolved_at = $2 WHERE id = $3',
+        ['resolved', nowIso, reportId]
+      );
 
-      dbInstance.get('SELECT * FROM problems WHERE id = ?', [reportId], async (err, problem) => {
-        if (!problem) return;
+      const { rows } = await pgPool.query('SELECT * FROM problems WHERE id = $1', [reportId]);
+      const problem = rows[0];
+      if (!problem) return;
 
-        problem.status = 'resolved';
-        problem.resolved_at = Date.now();
+      problem.status = 'resolved';
+      problem.resolved_at = nowIso;
 
-        const updatedCaption = buildMessageCaption(problem, `<b>Статус:</b> 🟢 Решено (Закрыл: ${userTag} с доказательством)`);
-        const updatedKeyboard = getInlineKeyboard(reportId, 'resolved'); // empty keyboard
+      const updatedCaption = buildMessageCaption(problem, `<b>Статус:</b> 🟢 Решено (Закрыл: ${userTag} с доказательством)`);
+      const updatedKeyboard = getInlineKeyboard(reportId, 'resolved'); // empty keyboard
 
-        // Edit original report card message
-        try {
-          const isPhotoCard = Boolean(problem.photo_url);
-          if (isPhotoCard) {
-            await callTelegramApi('editMessageCaption', {
-              chat_id: chatId,
-              message_id: cardMsgId,
-              caption: updatedCaption,
-              parse_mode: 'HTML',
-              reply_markup: updatedKeyboard
-            });
-          } else {
-            await callTelegramApi('editMessageText', {
-              chat_id: chatId,
-              message_id: cardMsgId,
-              text: updatedCaption,
-              parse_mode: 'HTML',
-              reply_markup: updatedKeyboard
-            });
-          }
-        } catch (e) {
-          console.error('Error updating original card message:', e);
+      // Edit original report card message
+      try {
+        const isPhotoCard = Boolean(problem.photo_url);
+        if (isPhotoCard) {
+          await callTelegramApi('editMessageCaption', {
+            chat_id: chatId,
+            message_id: cardMsgId,
+            caption: updatedCaption,
+            parse_mode: 'HTML',
+            reply_markup: updatedKeyboard
+          });
+        } else {
+          await callTelegramApi('editMessageText', {
+            chat_id: chatId,
+            message_id: cardMsgId,
+            text: updatedCaption,
+            parse_mode: 'HTML',
+            reply_markup: updatedKeyboard
+          });
         }
+      } catch (e) {
+        console.error('Error updating original card message:', e);
+      }
 
-        // Send confirmation in chat
-        await callTelegramApi('sendMessage', {
-          chat_id: chatId,
-          text: `✅ <b>Заявка #${reportId} успешно закрыта с медиа-подтверждением!</b>`,
-          parse_mode: 'HTML',
-          reply_to_message_id: msg.message_id
-        });
-
-        // Clean up pending entry
-        delete pendingProofByChat[chatId];
-        delete pendingProofByReport[reportId];
+      // Send confirmation in chat
+      await callTelegramApi('sendMessage', {
+        chat_id: chatId,
+        text: `✅ <b>Заявка #${reportId} успешно закрыта с медиа-подтверждением!</b>`,
+        parse_mode: 'HTML',
+        reply_to_message_id: msg.message_id
       });
-    });
+
+      // Clean up pending entry
+      delete pendingProofByChat[chatId];
+      delete pendingProofByReport[reportId];
+    } catch (dbErr) {
+      console.error('DB error resolving report:', dbErr.message);
+    }
   } catch (err) {
     console.error('Error processing media proof message:', err);
   }
 }
 
-function initTelegramBot(db) {
-  dbInstance = db;
+function initTelegramBot(pool) {
+  pgPool = pool;
   console.log('🤖 Telegram Dispatcher Bot service initialized (@vaisperia_dispatch_bot)');
   // Start background long polling
   pollUpdates().catch(err => console.error('Telegram bot polling error:', err));
@@ -473,3 +493,4 @@ module.exports = {
   sendReportToGroup,
   initTelegramBot
 };
+
