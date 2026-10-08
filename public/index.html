@@ -61,7 +61,7 @@
                         <path d="M12 17h.01"/>
                     </svg>
                 </span>
-                <h2>Vaisperia</h2>
+                <h2 id="authMainTitle" data-i18n="auth_title_register">Vaisperia</h2>
                 <p id="bio-subtitle" data-i18n="bio_subtitle">Обязательный биометрический контроль гражданина</p>
             </div>
             
@@ -90,6 +90,9 @@
                     
                     <button type="submit" class="btn-login" id="btnGoToBioStep2" data-i18n="complete_biometrics">Пройти биометрию</button>
                 </form>
+                <div style="margin-top: 12px; text-align: center;">
+                    <button type="button" id="authModeToggle" style="background: none; border: none; color: var(--eco-emerald); font-size: 0.88rem; font-weight: 600; cursor: pointer; padding: 4px 8px; text-decoration: underline;" data-i18n="toggle_to_login">Войти через...</button>
+                </div>
                 <div style="margin-top: 14px; text-align: center;">
                     <button type="button" class="btn-guest" id="btnGuestLogin" style="width:100%; padding: 12px; background: transparent; border: 1.5px dashed var(--eco-emerald); color: var(--eco-forest); font-weight: 700; border-radius: 12px; cursor: pointer; transition: var(--transition-smooth);" data-i18n="btn_guest_login">
                         👤 Продолжить как гость

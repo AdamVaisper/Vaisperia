@@ -247,6 +247,87 @@ document.addEventListener("DOMContentLoaded", () => {
         return vector.map(val => parseFloat((val / magnitude).toFixed(4)));
     }
 
+    // -----------------------------------------------------
+    // Состояние переключателя режимов авторизации (Login vs Register)
+    // -----------------------------------------------------
+    let isLoginMode = false;
+
+    function updateAuthModeUI() {
+        const authMainTitle = document.getElementById('authMainTitle');
+        const bioSubtitle = document.getElementById('bio-subtitle');
+        const btnGoToBioStep2 = document.getElementById('btnGoToBioStep2');
+        const btnSubmitBiometrics = document.getElementById('btnSubmitBiometrics');
+        const authModeToggle = document.getElementById('authModeToggle');
+        const btnBackToStep1 = document.getElementById('btnBackToStep1');
+
+        if (isLoginMode) {
+            if (authMainTitle) {
+                authMainTitle.setAttribute('data-i18n', 'auth_title_login');
+                authMainTitle.textContent = window.t ? window.t('auth_title_login', 'Вход в Vaisperia') : 'Вход в Vaisperia';
+            }
+            if (bioSubtitle) {
+                bioSubtitle.setAttribute('data-i18n', 'bio_subtitle_login');
+                bioSubtitle.textContent = window.t ? window.t('bio_subtitle_login', 'Биометрическая авторизация гражданина') : 'Биометрическая авторизация гражданина';
+            }
+            if (btnGoToBioStep2) {
+                btnGoToBioStep2.setAttribute('data-i18n', 'btn_submit_login');
+                btnGoToBioStep2.textContent = window.t ? window.t('btn_submit_login', 'Войти') : 'Войти';
+            }
+            if (btnSubmitBiometrics) {
+                btnSubmitBiometrics.setAttribute('data-i18n', 'btn_submit_login');
+                btnSubmitBiometrics.textContent = window.t ? window.t('btn_submit_login', 'Войти') : 'Войти';
+            }
+            if (authModeToggle) {
+                authModeToggle.setAttribute('data-i18n', 'toggle_to_register');
+                authModeToggle.textContent = window.t ? window.t('toggle_to_register', 'Зарегистрироваться') : 'Зарегистрироваться';
+            }
+            if (btnBackToStep1) {
+                btnBackToStep1.setAttribute('data-i18n', 'toggle_to_register');
+                btnBackToStep1.textContent = window.t ? window.t('toggle_to_register', 'Зарегистрироваться') : 'Зарегистрироваться';
+            }
+        } else {
+            if (authMainTitle) {
+                authMainTitle.setAttribute('data-i18n', 'auth_title_register');
+                authMainTitle.textContent = window.t ? window.t('auth_title_register', 'Vaisperia') : 'Vaisperia';
+            }
+            if (bioSubtitle) {
+                bioSubtitle.setAttribute('data-i18n', 'bio_subtitle');
+                bioSubtitle.textContent = window.t ? window.t('bio_subtitle', 'Обязательный биометрический контроль гражданина') : 'Обязательный биометрический контроль гражданина';
+            }
+            if (btnGoToBioStep2) {
+                btnGoToBioStep2.setAttribute('data-i18n', 'complete_biometrics');
+                btnGoToBioStep2.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
+            }
+            if (btnSubmitBiometrics) {
+                btnSubmitBiometrics.setAttribute('data-i18n', 'complete_biometrics');
+                btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
+            }
+            if (authModeToggle) {
+                authModeToggle.setAttribute('data-i18n', 'toggle_to_login');
+                authModeToggle.textContent = window.t ? window.t('toggle_to_login', 'Войти через...') : 'Войти через...';
+            }
+            if (btnBackToStep1) {
+                btnBackToStep1.setAttribute('data-i18n', 'login_via_gmail');
+                btnBackToStep1.textContent = window.t ? window.t('login_via_gmail', 'Войти через Gmail / Пароль') : 'Войти через Gmail / Пароль';
+            }
+        }
+    }
+
+    const authModeToggle = document.getElementById('authModeToggle');
+    if (authModeToggle) {
+        authModeToggle.addEventListener('click', () => {
+            hideBioError();
+            isLoginMode = !isLoginMode;
+            updateAuthModeUI();
+        });
+    }
+
+    if (window.i18n && typeof window.i18n.onLanguageChange === 'function') {
+        window.i18n.onLanguageChange(() => {
+            updateAuthModeUI();
+        });
+    }
+
     // Шаг 1 -> Шаг 2
     if (bioStep1Form) {
         bioStep1Form.addEventListener('submit', (e) => {
@@ -258,17 +339,19 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Назад на Шаг 1
+    // Назад на Шаг 1 (и переключение режима авторизации)
     if (btnBackToStep1) {
         btnBackToStep1.addEventListener('click', () => {
             hideBioError();
             stopWebcam();
             bioStep2.classList.add('hidden');
             bioStep1.classList.remove('hidden');
+            isLoginMode = !isLoginMode;
+            updateAuthModeUI();
         });
     }
 
-    // Сканирование биометрии и динамическая обработка (POST /api/register)
+    // Сканирование биометрии и динамическая обработка (POST /api/login или /api/register)
     if (btnSubmitBiometrics) {
         btnSubmitBiometrics.addEventListener('click', async () => {
             hideBioError();
@@ -289,8 +372,10 @@ document.addEventListener("DOMContentLoaded", () => {
             btnSubmitBiometrics.disabled = true;
             btnSubmitBiometrics.textContent = window.t ? window.t('scanning_and_verifying', 'Сканирование и проверка...') : 'Сканирование и проверка...';
 
+            const endpoint = isLoginMode ? '/api/login' : '/api/register';
+
             try {
-                const response = await fetch('/api/register', {
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password, email, faceVector })
@@ -310,19 +395,19 @@ document.addEventListener("DOMContentLoaded", () => {
                     localStorage.removeItem('vaisperia_isGuest');
                     stopWebcam();
                     btnSubmitBiometrics.disabled = false;
-                    btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
+                    updateAuthModeUI();
                     checkAuth();
                 } else {
                     const errKey = data.errorKey || data.error || 'auth_credentials_mismatch';
                     showBioError(errKey);
                     btnSubmitBiometrics.disabled = false;
-                    btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
+                    updateAuthModeUI();
                 }
             } catch (err) {
                 console.error("Biometric processing error:", err);
                 showBioError('err_network_submit');
                 btnSubmitBiometrics.disabled = false;
-                btnSubmitBiometrics.textContent = window.t ? window.t('complete_biometrics', 'Пройти биометрию') : 'Пройти биометрию';
+                updateAuthModeUI();
             }
         });
     }

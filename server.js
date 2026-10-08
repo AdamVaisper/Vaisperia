@@ -248,9 +248,10 @@ function verifyAdminAuth(req) {
 
 // API Endpoints
 
-// 1. Universal Biometric Auth / Registration Endpoint
+// 1. Universal Biometric Auth / Registration / Login Endpoint
 const handleBiometricAuth = async (req, res) => {
   const { username, password, email, faceVector } = req.body;
+  const isLoginModeRequest = req.path === '/api/login';
 
   if (!faceVector || !Array.isArray(faceVector) || faceVector.length === 0) {
     return res.status(400).json({ 
@@ -282,7 +283,7 @@ const handleBiometricAuth = async (req, res) => {
       }
     }
 
-    // CASE 1: FACE EXISTS IN DB (Existing User)
+    // CASE 1: FACE MATCHES AN EXISTING USER IN DB
     if (matchedUser) {
       const inputUsername = (username || '').trim();
       const inputEmail = (email || '').trim().toLowerCase();
@@ -296,7 +297,7 @@ const handleBiometricAuth = async (req, res) => {
       const emailMatches = inputEmail.length > 0 && inputEmail === dbEmail;
       const passwordMatches = inputPassword.length > 0 && inputPassword === dbPassword;
 
-      if (usernameMatches && emailMatches && passwordMatches) {
+      if ((usernameMatches || emailMatches) && passwordMatches) {
         // Track login activity
         try {
           await pool.query(
@@ -325,10 +326,66 @@ const handleBiometricAuth = async (req, res) => {
       }
     }
 
-    // CASE 2: FACE DOES NOT EXIST IN DB (New User)
+    // CASE 2: FACE DID NOT MATCH BY DISTANCE (< 0.25)
     const inputUsername = (username || '').trim();
     const inputEmail = (email || '').trim().toLowerCase();
     const inputPassword = password || '';
+
+    // If request was sent to /api/login (LOGIN MODE)
+    if (isLoginModeRequest) {
+      if (!inputUsername && !inputEmail) {
+        return res.status(400).json({
+          success: false,
+          errorKey: 'fill_required_fields',
+          error: 'Please fill in Username or Gmail and Password.'
+        });
+      }
+
+      // Find user by username or email
+      const { rows: matchedByCreds } = await pool.query(
+        'SELECT id, username, email, password FROM users WHERE (LOWER(username) = LOWER($1) AND $1 != \'\') OR (LOWER(email) = LOWER($2) AND $2 != \'\')',
+        [inputUsername, inputEmail]
+      );
+
+      if (matchedByCreds.length > 0) {
+        const u = matchedByCreds[0];
+        if (inputPassword && inputPassword === u.password) {
+          // Password matches -> update face vector to new capture & update login activity
+          const vectorStr = JSON.stringify(faceVector);
+          try {
+            await pool.query(
+              'UPDATE users SET face_vector = $1, login_count = COALESCE(login_count, 0) + 1, last_login_at = CURRENT_TIMESTAMP WHERE id = $2',
+              [vectorStr, u.id]
+            );
+          } catch (uErr) {
+            console.error('Error updating face vector on login:', uErr);
+          }
+
+          return res.status(200).json({
+            success: true,
+            message: 'Biometric authentication successful!',
+            isNewUser: false,
+            userId: u.id,
+            username: u.username,
+            email: u.email
+          });
+        } else {
+          return res.status(400).json({
+            success: false,
+            errorKey: 'auth_credentials_mismatch',
+            error: 'Incorrect username, Gmail, or password!'
+          });
+        }
+      } else {
+        return res.status(400).json({
+          success: false,
+          errorKey: 'user_not_found',
+          error: 'User with this username or Gmail not found!'
+        });
+      }
+    }
+
+    // Otherwise: REGISTER MODE (/api/register or /api/biometric-auth)
 
     // Verify if Username, Gmail, and Password are provided and valid
     if (!inputUsername || !inputEmail || !inputPassword) {
@@ -381,6 +438,7 @@ const handleBiometricAuth = async (req, res) => {
 };
 
 app.post('/api/register', handleBiometricAuth);
+app.post('/api/login', handleBiometricAuth);
 app.post('/api/biometric-auth', handleBiometricAuth);
 
 // Endpoint: Forgot password reset simulation
