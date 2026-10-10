@@ -165,6 +165,7 @@
             history_loading: "Загрузка истории обращений...",
             history_guest_placeholder: "Вы вошли как Гость. Зарегистрируйтесь, чтобы копить баллы и видеть историю!",
             history_empty_placeholder: "Вы пока не отправляли заявок. Вкладка \"Карта\" ждет вас!",
+            history_error: "Ошибка загрузки истории из базы данных.",
             
             settings_title: "Настройки ⚙️",
             change_avatar: "📸 Изменить фото профиля",
@@ -395,6 +396,7 @@
             history_loading: "Murojaatlar tarixi yuklanmoqda...",
             history_guest_placeholder: "Siz Mehmon sifatida kirdingiz. Ball to'plash va tarixni ko'rish uchun ro'yxatdan o'ting!",
             history_empty_placeholder: "Siz hali arizalar yubormadingiz. \"Xarita\" bo'limi sizni kutmoqda!",
+            history_error: "Ma'lumotlar bazasidan tarixni yuklashda xatolik.",
             
             settings_title: "Sozlamalar ⚙️",
             change_avatar: "📸 Profil rasmini o'zgartirish",
@@ -625,6 +627,7 @@
             history_loading: "Loading report history...",
             history_guest_placeholder: "You are logged in as Guest. Register to earn points and view history!",
             history_empty_placeholder: "You haven't submitted any reports yet. The 'Map' tab is waiting for you!",
+            history_error: "Error loading history from database.",
             
             settings_title: "Settings ⚙️",
             change_avatar: "📸 Change profile photo",

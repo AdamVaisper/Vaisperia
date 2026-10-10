@@ -2581,11 +2581,15 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        fetch('/api/problems')
-            .then(res => res.json())
-            .then(data => {
-                // Фильтруем личные отчеты текущего пользователя (включая созданные анонимно)
-                const userProblems = data.filter(prob => prob.username === currentUsername || prob.user_id_name === currentUsername);
+        fetch(`/api/user-reports/${encodeURIComponent(currentUsername)}`)
+            .then(res => {
+                if (!res.ok) {
+                    return fetch('/api/problems').then(r => r.json()).then(data => data.filter(prob => prob.username === currentUsername || prob.user_id_name === currentUsername));
+                }
+                return res.json();
+            })
+            .then(userProblems => {
+                if (!Array.isArray(userProblems)) userProblems = [];
 
                 // Обновляем личный счетчик
                 if (countBadge) countBadge.textContent = userProblems.length;
@@ -2652,7 +2656,8 @@ document.addEventListener("DOMContentLoaded", () => {
             })
             .catch(err => {
                 console.error("Error fetching operations history:", err);
-                listContainer.innerHTML = `<div class="history-placeholder error">Ошибка связки с базой SQLite.</div>`;
+                const errMsg = window.t ? window.t('history_error', 'Ошибка загрузки истории из базы данных.') : 'Ошибка загрузки истории из базы данных.';
+                listContainer.innerHTML = `<div class="history-placeholder error">${errMsg}</div>`;
             });
     }
 

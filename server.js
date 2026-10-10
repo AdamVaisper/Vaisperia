@@ -634,6 +634,83 @@ app.get('/api/problems', async (req, res) => {
   }
 });
 
+// Get user specific reports history from Supabase (PostgreSQL)
+app.get('/api/user-reports', async (req, res) => {
+  const username = req.query.username;
+  if (!username) {
+    return res.status(400).json({ error: 'Username query parameter is required.' });
+  }
+
+  try {
+    await updateReportLifecycle();
+  } catch (lifecycleErr) {
+    console.error('Error executing lifecycle update on GET /api/user-reports:', lifecycleErr);
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM problems 
+       WHERE LOWER(username) = LOWER($1) OR LOWER(user_id_name) = LOWER($1) 
+       ORDER BY timestamp DESC`,
+      [username]
+    );
+
+    const sanitizedRows = (rows || []).map(prob => {
+      if (prob.is_anonymous == 1 || prob.username === 'Анонимный гражданин' || prob.username === 'Гость') {
+        return {
+          ...prob,
+          username: 'Анонимный гражданин',
+          user_avatar: '',
+          is_anonymous: 1
+        };
+      }
+      return prob;
+    });
+
+    res.json(sanitizedRows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/user-reports/:username', async (req, res) => {
+  const { username } = req.params;
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required.' });
+  }
+
+  try {
+    await updateReportLifecycle();
+  } catch (lifecycleErr) {
+    console.error('Error executing lifecycle update on GET /api/user-reports/:username:', lifecycleErr);
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM problems 
+       WHERE LOWER(username) = LOWER($1) OR LOWER(user_id_name) = LOWER($1) 
+       ORDER BY timestamp DESC`,
+      [username]
+    );
+
+    const sanitizedRows = (rows || []).map(prob => {
+      if (prob.is_anonymous == 1 || prob.username === 'Анонимный гражданин' || prob.username === 'Гость') {
+        return {
+          ...prob,
+          username: 'Анонимный гражданин',
+          user_avatar: '',
+          is_anonymous: 1
+        };
+      }
+      return prob;
+    });
+
+    res.json(sanitizedRows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 5. Report a new problem (Strictly CREATE / INSERT new record with unique ID)
 app.post('/api/problems', (req, res) => {
   upload.single('photo')(req, res, async function (err) {
