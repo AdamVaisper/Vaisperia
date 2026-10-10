@@ -91,20 +91,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
 }));
 
 
-// Configure Multer for image uploads (5MB Limit)
-const storage = multer.memoryStorage();
-
-const upload = multer({ 
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only images are allowed'));
-    }
-  }
-});
+// Configure Multer for parsing text-only multipart fields without buffering heavy files in memory
+const uploadNone = multer().none();
 
 // Ensure tables exist on startup
 async function initDb() {
@@ -153,6 +141,33 @@ async function initDb() {
     await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS is_anonymous INTEGER DEFAULT 0;`);
     await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS user_id_name TEXT;`);
     await pool.query(`ALTER TABLE problems ADD COLUMN IF NOT EXISTS user_avatar TEXT;`);
+
+    // Ensure Supabase Storage bucket 'reports' exists and is public
+    try {
+      await pool.query(`
+        INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+        VALUES ('reports', 'reports', true, 5242880, ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+        ON CONFLICT (id) DO UPDATE SET public = true;
+      `);
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Public Insert Reports'
+          ) THEN
+            CREATE POLICY "Public Insert Reports" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = 'reports');
+          END IF;
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Public Select Reports'
+          ) THEN
+            CREATE POLICY "Public Select Reports" ON storage.objects FOR SELECT TO public USING (bucket_id = 'reports');
+          END IF;
+        END $$;
+      `);
+      console.log('Supabase Storage bucket "reports" configured.');
+    } catch (storageErr) {
+      console.log('Storage bucket setup note:', storageErr.message);
+    }
 
     // Preserve history: assign legacy/unassigned records to Adam_Vaisper
     await pool.query(`
@@ -719,74 +734,67 @@ app.get('/api/user-reports/:username', async (req, res) => {
   }
 });
 
-// 5. Report a new problem (Strictly CREATE / INSERT new record with unique ID)
-app.post('/api/problems', (req, res) => {
-  upload.single('photo')(req, res, async function (err) {
-    if (err instanceof multer.MulterError) {
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ error: 'File size limit exceeded. Maximum allowed size is 5MB.' });
-      }
-      if (err.code === 'LIMIT_FIELD_VALUE' || (err.message && err.message.includes('Field value too long'))) {
-        return res.status(400).json({ error: 'Field value too long' });
-      }
-      return res.status(400).json({ error: err.message });
-    } else if (err) {
-      if (err.message && err.message.includes('Field value too long')) {
-        return res.status(400).json({ error: 'Field value too long' });
-      }
-      return res.status(400).json({ error: err.message });
-    }
-
-    const { description, latitude, longitude, username, category, isAnonymous, userAvatar } = req.body;
-    let photoUrl = null;
-
-    if (req.file) {
-      const base64Data = req.file.buffer.toString('base64');
-      photoUrl = `data:${req.file.mimetype};base64,${base64Data}`;
-    }
-
-    if (!description || !latitude || !longitude) {
-       return res.status(400).json({ error: 'Description and location are required.' });
-    }
-
-    const isAnon = (isAnonymous === 'true' || isAnonymous === true || isAnonymous === 1 || isAnonymous === '1' || username === 'Анонимный гражданин' || username === 'Гость');
-    const realUser = (username && username.trim() && username.trim() !== 'Анонимный гражданин' && username.trim() !== 'Гость') ? username.trim() : 'Adam_Vaisper';
-    const displayUser = isAnon ? 'Анонимный гражданин' : realUser;
-    const reportCategory = (category && category.trim()) ? category.trim() : 'Другое';
-    const avatarData = isAnon ? '' : (userAvatar || '');
-
-    try {
-      // ALWAYS INSERT A BRAND NEW RECORD WITH UNIQUE ID (NO UPSERT / NO UPDATE BY COORDINATES)
-      const result = await pool.query(`
-        INSERT INTO problems (photo_url, description, latitude, longitude, username, category, status, is_anonymous, user_id_name, user_avatar)
-        VALUES ($1, $2, $3, $4, $5, $6, 'new', $7, $8, $9)
-        RETURNING id, timestamp
-      `, [photoUrl, description, latitude, longitude, displayUser, reportCategory, isAnon ? 1 : 0, realUser, avatarData]);
-
-      const reportId = result.rows[0].id;
-      const reportTimestamp = result.rows[0].timestamp;
-      const newReport = {
-        id: reportId,
-        photo_url: photoUrl,
-        description: description,
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude),
-        username: displayUser,
-        category: reportCategory,
-        status: 'new',
-        user_avatar: avatarData,
-        is_anonymous: isAnon ? 1 : 0,
-        timestamp: reportTimestamp ? reportTimestamp.toISOString() : new Date().toISOString()
-      };
-
-      // Dispatch notification asynchronously to Telegram Department Group
-      sendReportToGroup(newReport, pool, path.join(__dirname, 'public'));
-
-      res.status(201).json({ id: reportId, success: true });
-    } catch (insertErr) {
-      res.status(500).json({ error: insertErr.message });
-    }
+// 4.5. Storage configuration for direct frontend uploads
+app.get('/api/storage-config', (req, res) => {
+  res.json({
+    supabaseUrl: process.env.SUPABASE_URL || 'https://gfbukhbuuemxsensrsvm.supabase.co',
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
   });
+});
+
+// 5. Report a new problem (Strictly CREATE / INSERT new record with unique ID)
+// Accepts direct public photo URL from client Supabase Storage upload, saving Node.js RAM
+app.post('/api/problems', (req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.includes('multipart/form-data')) {
+    return uploadNone(req, res, next);
+  }
+  next();
+}, async (req, res) => {
+  const { description, latitude, longitude, username, category, isAnonymous, userAvatar } = req.body;
+  const photoUrl = (req.body.photoUrl || req.body.photo_url || '').trim() || null;
+
+  if (!description || !latitude || !longitude) {
+     return res.status(400).json({ error: 'Description and location are required.' });
+  }
+
+  const isAnon = (isAnonymous === 'true' || isAnonymous === true || isAnonymous === 1 || isAnonymous === '1' || username === 'Анонимный гражданин' || username === 'Гость');
+  const realUser = (username && username.trim() && username.trim() !== 'Анонимный гражданин' && username.trim() !== 'Гость') ? username.trim() : 'Adam_Vaisper';
+  const displayUser = isAnon ? 'Анонимный гражданин' : realUser;
+  const reportCategory = (category && category.trim()) ? category.trim() : 'Другое';
+  const avatarData = isAnon ? '' : (userAvatar || '');
+
+  try {
+    // ALWAYS INSERT A BRAND NEW RECORD WITH UNIQUE ID (NO UPSERT / NO UPDATE BY COORDINATES)
+    const result = await pool.query(`
+      INSERT INTO problems (photo_url, description, latitude, longitude, username, category, status, is_anonymous, user_id_name, user_avatar)
+      VALUES ($1, $2, $3, $4, $5, $6, 'new', $7, $8, $9)
+      RETURNING id, timestamp
+    `, [photoUrl, description, latitude, longitude, displayUser, reportCategory, isAnon ? 1 : 0, realUser, avatarData]);
+
+    const reportId = result.rows[0].id;
+    const reportTimestamp = result.rows[0].timestamp;
+    const newReport = {
+      id: reportId,
+      photo_url: photoUrl,
+      description: description,
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      username: displayUser,
+      category: reportCategory,
+      status: 'new',
+      user_avatar: avatarData,
+      is_anonymous: isAnon ? 1 : 0,
+      timestamp: reportTimestamp ? reportTimestamp.toISOString() : new Date().toISOString()
+    };
+
+    // Dispatch notification asynchronously to Telegram Department Group
+    sendReportToGroup(newReport, pool, path.join(__dirname, 'public'));
+
+    res.status(201).json({ id: reportId, success: true });
+  } catch (insertErr) {
+    res.status(500).json({ error: insertErr.message });
+  }
 });
 
 const server = app.listen(PORT, '0.0.0.0', () => {

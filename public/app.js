@@ -1751,7 +1751,113 @@ document.addEventListener("DOMContentLoaded", () => {
         latInput.addEventListener('input', () => { submitBtn.disabled = false; });
         lngInput.addEventListener('input', () => { submitBtn.disabled = false; });
 
-        // Отправка формы через Multipart
+        // Supabase Direct Storage Helpers
+        let _supabaseStorageConfig = null;
+        async function getSupabaseConfig() {
+            if (_supabaseStorageConfig) return _supabaseStorageConfig;
+            try {
+                const res = await fetch('/api/storage-config');
+                if (res.ok) {
+                    _supabaseStorageConfig = await res.json();
+                }
+            } catch (err) {
+                console.error("Error fetching storage config:", err);
+            }
+            return _supabaseStorageConfig || { supabaseUrl: '', supabaseAnonKey: '' };
+        }
+
+        // Optimize image client-side to save bandwidth and ensure fast upload
+        async function optimizeImageForUpload(file) {
+            if (!file || !file.type || !file.type.startsWith('image/')) return file;
+            if (file.size <= 800 * 1024) return file;
+
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        try {
+                            const maxDimension = 1920;
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > maxDimension || height > maxDimension) {
+                                if (width > height) {
+                                    height = Math.round((height * maxDimension) / width);
+                                    width = maxDimension;
+                                } else {
+                                    width = Math.round((width * maxDimension) / height);
+                                    height = maxDimension;
+                                }
+                            }
+
+                            const canvas = document.createElement('canvas');
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            canvas.toBlob((blob) => {
+                                if (blob && blob.size < file.size) {
+                                    const safeName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                                    resolve(new File([blob], safeName, { type: 'image/jpeg' }));
+                                } else {
+                                    resolve(file);
+                                }
+                            }, 'image/jpeg', 0.85);
+                        } catch (err) {
+                            console.warn("Canvas compression fallback:", err);
+                            resolve(file);
+                        }
+                    };
+                    img.onerror = () => resolve(file);
+                    img.src = e.target.result;
+                };
+                reader.onerror = () => resolve(file);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Direct client-side photo upload to Supabase Storage (reports bucket)
+        async function uploadReportPhotoDirectly(file) {
+            if (!file) return null;
+
+            const config = await getSupabaseConfig();
+            if (!config || !config.supabaseUrl || !config.supabaseAnonKey) {
+                throw new Error("Supabase Storage не настроен на сервере (отсутствует SUPABASE_ANON_KEY).");
+            }
+
+            const extMatch = file.name ? file.name.match(/\.([a-zA-Z0-9]+)$/) : null;
+            let ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
+            if (ext === 'jpeg') ext = 'jpg';
+            const uniqueName = `report_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${ext}`;
+            const contentType = file.type || (ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg');
+
+            const uploadUrl = `${config.supabaseUrl}/storage/v1/object/reports/${uniqueName}`;
+            const uploadRes = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    'apikey': config.supabaseAnonKey,
+                    'Authorization': `Bearer ${config.supabaseAnonKey}`,
+                    'Content-Type': contentType,
+                    'x-upsert': 'true'
+                },
+                body: file
+            });
+
+            if (!uploadRes.ok) {
+                let errorMsg = '';
+                try {
+                    const errData = await uploadRes.json();
+                    errorMsg = errData.message || errData.error || '';
+                } catch (_) {}
+                throw new Error(errorMsg || `Ошибка загрузки фото (${uploadRes.status}): ${uploadRes.statusText}`);
+            }
+
+            return `${config.supabaseUrl}/storage/v1/object/public/reports/${uniqueName}`;
+        }
+
+        // Отправка формы через прямое облачное хранилище Supabase
         reportForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -1776,7 +1882,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            // Обрезка слишком длинного имени файла перед отправкой на сервер
+            // Обрезка слишком длинного имени файла
             if (file && file.name.length > 25) {
                 const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.')) : '';
                 const base = file.name.includes('.') ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name;
@@ -1784,10 +1890,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 file = new File([file], truncatedName, { type: file.type });
             }
 
-            const formData = new FormData(reportForm);
-            if (file) {
-                formData.set('photo', file);
-            }
             const isLoggedIn = (localStorage.getItem('vaisperia_isLoggedIn') === 'true' || localStorage.getItem('isAuth') === 'true');
             const currentUsername = localStorage.getItem('vaisperia_username') || 'Adam_Vaisper';
             
@@ -1796,29 +1898,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const anonNameStr = window.t ? (window.t('author_anonymous') || window.t('anonymous_citizen') || 'Анонимный гражданин') : 'Анонимный гражданин';
 
+            let submitUsername = 'Гость';
+            let submitAvatar = '';
+            let submitIsAnon = 'true';
+
             if (isLoggedIn) {
                 if (isAnonChecked) {
-                    formData.set('username', anonNameStr);
-                    formData.set('userAvatar', '');
-                    formData.set('isAnonymous', 'true');
+                    submitUsername = anonNameStr;
+                    submitAvatar = '';
+                    submitIsAnon = 'true';
                 } else {
-                    formData.set('username', currentUsername);
-                    formData.set('userAvatar', getUserAvatar(currentUsername));
-                    formData.set('isAnonymous', 'false');
+                    submitUsername = currentUsername;
+                    submitAvatar = getUserAvatar(currentUsername);
+                    submitIsAnon = 'false';
                 }
-            } else {
-                formData.set('username', 'Гость');
-                formData.set('userAvatar', '');
-                formData.set('isAnonymous', 'true');
             }
+
+            const categoryEl = document.getElementById('report-category');
+            const categoryValue = categoryEl ? categoryEl.value : 'Другое';
 
             try {
                 submitBtn.disabled = true;
+                submitBtn.textContent = window.t ? (window.t('uploading_photo') || 'Загрузка фото...') : 'Загрузка фото...';
+
+                // 1. Загрузка фотографии напрямую в Supabase Storage (в обход RAM сервера Node.js)
+                const optimizedFile = await optimizeImageForUpload(file);
+                const publicPhotoUrl = await uploadReportPhotoDirectly(optimizedFile);
+
                 submitBtn.textContent = window.t ? (window.t('submitting') || window.t('btn_submitting') || 'Отправка...') : 'Отправка...';
 
+                // 2. Отправка легковесного JSON с публичной ссылкой на сервер
                 const response = await fetch('/api/problems', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        description: descValue,
+                        latitude: parseFloat(latValue),
+                        longitude: parseFloat(lngValue),
+                        username: submitUsername,
+                        category: categoryValue,
+                        isAnonymous: submitIsAnon,
+                        userAvatar: submitAvatar,
+                        photoUrl: publicPhotoUrl
+                    })
                 });
 
                 const data = await response.json();
@@ -1893,6 +2017,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const errMsg = error && error.message ? error.message : "";
                 if (errMsg.includes("Field value too long") || errMsg.includes("LIMIT_FIELD_VALUE")) {
                     showMessage(window.t ? window.t('errors.field_too_long', 'Значение поля слишком длинное.') : 'Значение поля слишком длинное.', "error");
+                } else if (errMsg && (errMsg.includes("Supabase") || errMsg.includes("хранилищ") || errMsg.includes("фото") || errMsg.includes("Storage"))) {
+                    showMessage(errMsg, "error");
                 } else {
                     showMessage(window.t ? window.t('err_network_submit', 'Сетевой сбой при отправке формы. Попробуйте еще раз.') : 'Сетевой сбой при отправке формы. Попробуйте еще раз.', "error");
                 }

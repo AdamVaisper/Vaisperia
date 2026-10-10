@@ -256,7 +256,15 @@ async function sendReportToGroup(report, pool, publicDir) {
 
   try {
     if (report.photo_url) {
-      if (report.photo_url.startsWith('data:image/')) {
+      if (report.photo_url.startsWith('http://') || report.photo_url.startsWith('https://')) {
+        response = await callTelegramApi('sendPhoto', {
+          chat_id: chatId,
+          photo: report.photo_url,
+          caption: caption,
+          parse_mode: 'HTML',
+          reply_markup: replyMarkup
+        });
+      } else if (report.photo_url.startsWith('data:image/')) {
         const base64Data = report.photo_url.split(',')[1];
         const buffer = Buffer.from(base64Data, 'base64');
         response = await sendPhotoBufferMultipart(chatId, buffer, caption, replyMarkup);
