@@ -189,8 +189,8 @@ function parseDateMs(dateVal) {
 // Backend Report Lifecycle Worker
 // Rules:
 // 1. Red (new): After 24 hours from creation timestamp -> automatically transition to Yellow (in_progress). Never deleted.
-// 2. Yellow (in_progress): Indefinite. Never deleted by cleanup tasks.
-// 3. Green (resolved): Auto-deleted 24 hours AFTER resolution date (resolved_at > 24h), not creation date.
+// 2. Yellow (in_progress): Indefinite. Never archived by cleanup tasks.
+// 3. Green (resolved): After 24h from resolution -> status set to 'archived' (hidden from map, preserved in DB for history).
 async function updateReportLifecycle() {
   const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
   try {
@@ -207,16 +207,17 @@ async function updateReportLifecycle() {
       console.log(`[Lifecycle] Auto-updated ${updateResult.rowCount} report(s) from 'new' to 'in_progress' (>=24h old)`);
     }
 
-    // 🟢 resolved -> DELETE after 24h from resolved_at
-    const deleteResult = await pool.query(`
-      DELETE FROM problems
+    // 🟢 resolved -> 🗄 archived after 24h from resolved_at (record stays in DB, hidden from map)
+    const archiveResult = await pool.query(`
+      UPDATE problems
+      SET status = 'archived'
       WHERE status = 'resolved'
         AND resolved_at IS NOT NULL
         AND (EXTRACT(EPOCH FROM (NOW() - resolved_at)) * 1000) >= $1
       RETURNING id
     `, [TWENTY_FOUR_HOURS_MS]);
-    if (deleteResult.rowCount > 0) {
-      console.log(`[Lifecycle] Auto-deleted ${deleteResult.rowCount} resolved report(s) (resolved >=24h ago)`);
+    if (archiveResult.rowCount > 0) {
+      console.log(`[Lifecycle] Auto-archived ${archiveResult.rowCount} resolved report(s) (resolved >=24h ago) — records preserved in DB`);
     }
   } catch (err) {
     console.error('Error in updateReportLifecycle:', err.message);
@@ -492,14 +493,15 @@ app.get('/api/admin/stats', async (req, res) => {
     const weekReports = parseInt(weekRes.rows[0].count, 10) || 0;
 
     const statusRes = await pool.query('SELECT status, COUNT(*) FROM problems GROUP BY status');
-    const statusCounts = { new: 0, in_progress: 0, resolved: 0 };
+    const statusCounts = { new: 0, in_progress: 0, resolved: 0, archived: 0 };
     statusRes.rows.forEach(r => {
       const st = r.status || 'new';
       statusCounts[st] = parseInt(r.count, 10) || 0;
     });
 
     const activeIssues = statusCounts.new + statusCounts.in_progress;
-    const resolvedCount = statusCounts.resolved;
+    // Count both currently-resolved and archived (which were previously resolved) for the rate
+    const resolvedCount = statusCounts.resolved + statusCounts.archived;
     const resolutionRate = allTimeReports > 0 ? ((resolvedCount / allTimeReports) * 100).toFixed(1) + '%' : '0%';
 
     res.json({
@@ -615,7 +617,8 @@ app.get('/api/problems', async (req, res) => {
   }
 
   try {
-    const { rows } = await pool.query('SELECT * FROM problems ORDER BY timestamp DESC');
+    // Exclude archived reports from map view (archived = resolved >24h ago, kept in DB for history)
+    const { rows } = await pool.query("SELECT * FROM problems WHERE status != 'archived' ORDER BY timestamp DESC");
     // Enforce strict anonymity override on API output (never leak real name or custom avatar)
     const sanitizedRows = (rows || []).map(prob => {
       if (prob.is_anonymous == 1 || prob.username === 'Анонимный гражданин' || prob.username === 'Гость') {
