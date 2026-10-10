@@ -7,7 +7,7 @@ const fs = require('fs');
 const { sendReportToGroup, initTelegramBot } = require('./telegramBot');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 // Load .env if present
 const envPath = path.resolve(__dirname, '.env');
@@ -704,6 +704,6 @@ app.post('/api/problems', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Vaisperia Server running at http://localhost:${port}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Vaisperia Server running at http://0.0.0.0:${PORT}`);
 });
