@@ -83,7 +83,7 @@
                     <div class="form-group-login">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <label for="password" style="margin-bottom: 0;" data-i18n="label_password">Пароль доступа</label>
-                            <button type="button" id="btnOpenForgotPassword" style="background: none; border: none; color: var(--eco-emerald); font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 0;" data-i18n="btn_forgot_password">Забыли пароль?</button>
+                            <button type="button" id="btnOpenForgotPassword" style="display: none; background: none; border: none; color: var(--eco-emerald); font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 0;" data-i18n="btn_forgot_password">Забыли пароль?</button>
                         </div>
                         <input type="password" id="password" placeholder="••••••••">
                     </div>
@@ -126,18 +126,6 @@
             <div class="logo-area">
                 <span class="logo-emoji">🌱</span>
                 <h1 data-i18n="app_title">Vaisperia</h1>
-            </div>
-            <div class="lang-selector-wrapper header-lang-selector">
-                <button type="button" id="headerLangBtn" class="lang-dropdown-btn" title="Выбор языка">
-                    <span id="headerLangFlag">🇷🇺</span>
-                    <span id="headerLangCode" class="lang-code-text">RU</span>
-                    <span class="lang-dropdown-arrow">▼</span>
-                </button>
-                <div id="headerLangMenu" class="lang-dropdown-menu hidden">
-                    <button type="button" class="lang-option" data-lang="ru"><span class="flag">🇷🇺</span> RU</button>
-                    <button type="button" class="lang-option" data-lang="uz"><span class="flag">🇺🇿</span> UZ</button>
-                    <button type="button" class="lang-option" data-lang="en"><span class="flag">🇬🇧</span> EN</button>
-                </div>
             </div>
         </header>
 

@@ -185,13 +185,15 @@ body {
 }
 
 .app-header {
-  height: 60px;
+  min-height: 60px;
+  height: auto;
   background: #FFFFFF;
   color: var(--text-main);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: max(10px, env(safe-area-inset-top, 12px)) 20px 10px 20px;
+  box-sizing: border-box;
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   border-bottom: 1px solid rgba(0,0,0,0.05);
@@ -2237,10 +2239,15 @@ input:checked + .toggle-slider:before {
 }
 
 /* Telegram Settings Modal Card */
+#telegram-settings-modal {
+  padding-top: max(20px, env(safe-area-inset-top, 20px));
+  box-sizing: border-box;
+}
+
 .tg-settings-card {
   width: 100%;
   max-width: 400px;
-  padding: 16px 16px 120px 16px;
+  padding: max(16px, env(safe-area-inset-top, 20px)) 16px 120px 16px;
   box-sizing: border-box;
   margin: 0 auto;
   border-radius: 20px;
@@ -2257,6 +2264,7 @@ input:checked + .toggle-slider:before {
   align-items: center;
   gap: 12px;
   margin-bottom: 20px;
+  padding-top: env(safe-area-inset-top, 20px);
   padding-bottom: 12px;
   border-bottom: 1px solid #E2E8F0;
 }
@@ -2561,6 +2569,10 @@ input:checked + .toggle-slider:before {
   position: absolute;
   top: 18px;
   right: 18px;
+}
+
+.header-lang-selector {
+  display: none !important;
 }
 
 .lang-dropdown-btn {

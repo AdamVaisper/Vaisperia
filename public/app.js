@@ -259,6 +259,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const btnSubmitBiometrics = document.getElementById('btnSubmitBiometrics');
         const authModeToggle = document.getElementById('authModeToggle');
         const btnBackToStep1 = document.getElementById('btnBackToStep1');
+        const btnOpenForgotPassword = document.getElementById('btnOpenForgotPassword');
+
+        if (btnOpenForgotPassword) {
+            btnOpenForgotPassword.style.display = isLoginMode ? 'inline-block' : 'none';
+        }
 
         if (isLoginMode) {
             if (authMainTitle) {
@@ -327,6 +332,8 @@ document.addEventListener("DOMContentLoaded", () => {
             updateAuthModeUI();
         });
     }
+
+    updateAuthModeUI();
 
     // Шаг 1 -> Шаг 2
     if (bioStep1Form) {
