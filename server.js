@@ -639,9 +639,10 @@ app.get('/api/problems', async (req, res) => {
 
 // Get user specific reports history from Supabase (PostgreSQL)
 app.get('/api/user-reports', async (req, res) => {
-  const username = req.query.username;
-  if (!username) {
-    return res.status(400).json({ error: 'Username query parameter is required.' });
+  const username = (req.query.username || '').trim();
+  // Block empty, guest, or anonymous requests — must be a real registered user
+  if (!username || username.toLowerCase() === 'guest' || username === 'Анонимный гражданин' || username === 'Гость') {
+    return res.json([]);
   }
 
   try {
@@ -651,9 +652,10 @@ app.get('/api/user-reports', async (req, res) => {
   }
 
   try {
+    // Return all reports for this user (including their own anonymous ones via user_id_name)
     const { rows } = await pool.query(
       `SELECT * FROM problems 
-       WHERE LOWER(username) = LOWER($1) OR LOWER(user_id_name) = LOWER($1) 
+       WHERE LOWER(username) = LOWER($1) OR (is_anonymous = 1 AND LOWER(user_id_name) = LOWER($1))
        ORDER BY timestamp DESC`,
       [username]
     );
@@ -678,8 +680,10 @@ app.get('/api/user-reports', async (req, res) => {
 
 app.get('/api/user-reports/:username', async (req, res) => {
   const { username } = req.params;
-  if (!username) {
-    return res.status(400).json({ error: 'Username is required.' });
+  const cleanUsername = (username || '').trim();
+  // Block empty, guest, or anonymous requests — must be a real registered user
+  if (!cleanUsername || cleanUsername.toLowerCase() === 'guest' || cleanUsername === 'Анонимный гражданин' || cleanUsername === 'Гость') {
+    return res.json([]);
   }
 
   try {
@@ -689,11 +693,12 @@ app.get('/api/user-reports/:username', async (req, res) => {
   }
 
   try {
+    // Return all reports for this user (including their own anonymous ones via user_id_name)
     const { rows } = await pool.query(
       `SELECT * FROM problems 
-       WHERE LOWER(username) = LOWER($1) OR LOWER(user_id_name) = LOWER($1) 
+       WHERE LOWER(username) = LOWER($1) OR (is_anonymous = 1 AND LOWER(user_id_name) = LOWER($1))
        ORDER BY timestamp DESC`,
-      [username]
+      [cleanUsername]
     );
 
     const sanitizedRows = (rows || []).map(prob => {

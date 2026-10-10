@@ -2584,7 +2584,8 @@ document.addEventListener("DOMContentLoaded", () => {
         fetch(`/api/user-reports/${encodeURIComponent(currentUsername)}`)
             .then(res => {
                 if (!res.ok) {
-                    return fetch('/api/problems').then(r => r.json()).then(data => data.filter(prob => prob.username === currentUsername || prob.user_id_name === currentUsername));
+                    // Never fall back to /api/problems — that would expose all users' reports
+                    return [];
                 }
                 return res.json();
             })
