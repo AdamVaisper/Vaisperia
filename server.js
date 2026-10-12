@@ -169,12 +169,12 @@ async function initDb() {
       console.log('Storage bucket setup note:', storageErr.message);
     }
 
-    // Preserve history: assign legacy/unassigned records to Adam_Vaisper
+    // Preserve history: assign legacy unassigned records
     await pool.query(`
       UPDATE problems SET username = 'Adam_Vaisper'
-      WHERE username IS NULL OR username = '' OR username = 'Muratbek_92'
+      WHERE (username IS NULL OR username = '') AND (user_id_name IS NULL OR user_id_name = '')
     `);
-    console.log('Legacy problem records assigned to Adam_Vaisper');
+    console.log('Legacy unassigned problem records assigned to Adam_Vaisper');
     console.log('Connected to PostgreSQL (Supabase)');
   } catch (err) {
     console.error('DB init error:', err.message);
@@ -751,15 +751,19 @@ app.post('/api/problems', (req, res, next) => {
   }
   next();
 }, async (req, res) => {
-  const { description, latitude, longitude, username, category, isAnonymous, userAvatar } = req.body;
+  const { description, latitude, longitude, username, category, isAnonymous, userAvatar, author, user_id_name } = req.body;
   const photoUrl = (req.body.photoUrl || req.body.photo_url || '').trim() || null;
 
   if (!description || !latitude || !longitude) {
      return res.status(400).json({ error: 'Description and location are required.' });
   }
 
-  const isAnon = (isAnonymous === 'true' || isAnonymous === true || isAnonymous === 1 || isAnonymous === '1' || username === 'Анонимный гражданин' || username === 'Гость');
-  const realUser = (username && username.trim() && username.trim() !== 'Анонимный гражданин' && username.trim() !== 'Гость') ? username.trim() : 'Adam_Vaisper';
+  // Строго определяем автора из локальных данных текущей сессии/аккаунта клиента
+  const sessionAuthor = (author || user_id_name || (username && username.trim() !== 'Анонимный гражданин' && username.trim() !== 'Гость' ? username : '') || '').trim();
+  const isAnon = (isAnonymous === 'true' || isAnonymous === true || isAnonymous === 1 || isAnonymous === '1' || username === 'Анонимный гражданин' || username === 'Гость' || !sessionAuthor || sessionAuthor === 'Гость');
+  
+  // Изолируем автора: реальный автор - строго валидный аккаунт сессии клиента, запрещаем подмену
+  const realUser = (sessionAuthor && sessionAuthor !== 'Гость' && sessionAuthor !== 'Анонимный гражданин') ? sessionAuthor : 'Гость';
   const displayUser = isAnon ? 'Анонимный гражданин' : realUser;
   const reportCategory = (category && category.trim()) ? category.trim() : 'Другое';
   const avatarData = isAnon ? '' : (userAvatar || '');
@@ -788,8 +792,15 @@ app.post('/api/problems', (req, res, next) => {
       timestamp: reportTimestamp ? reportTimestamp.toISOString() : new Date().toISOString()
     };
 
-    // Dispatch notification asynchronously to Telegram Department Group
-    sendReportToGroup(newReport, pool, path.join(__dirname, 'public'));
+    // Отказоустойчивая отправка в Telegram в изолированном блоке try/catch:
+    // Ошибки сети, фото или API логируются, но не ломают сохранение в БД и не прерывают ответ клиенту
+    try {
+      sendReportToGroup(newReport, pool, path.join(__dirname, 'public')).catch(tgErr => {
+        console.error('[Telegram Dispatch Error (async)]:', tgErr && (tgErr.message || tgErr));
+      });
+    } catch (telegramErr) {
+      console.error('[Telegram Dispatch Error (sync)]:', telegramErr && (telegramErr.message || telegramErr));
+    }
 
     res.status(201).json({ id: reportId, success: true });
   } catch (insertErr) {

@@ -1890,28 +1890,34 @@ document.addEventListener("DOMContentLoaded", () => {
                 file = new File([file], truncatedName, { type: file.type });
             }
 
-            const isLoggedIn = (localStorage.getItem('vaisperia_isLoggedIn') === 'true' || localStorage.getItem('isAuth') === 'true');
-            const currentUsername = localStorage.getItem('vaisperia_username') || 'Adam_Vaisper';
-            
+            // Строго берем имя пользователя из локальной сессии текущего залогиненного аккаунта
+            const sessionUsername = (localStorage.getItem('vaisperia_username') || '').trim();
+            const isLoggedIn = (localStorage.getItem('vaisperia_isLoggedIn') === 'true' || localStorage.getItem('isAuth') === 'true') && sessionUsername.length > 0;
+            const currentAccount = isLoggedIn ? sessionUsername : 'Гость';
+
             const anonCheckbox = document.getElementById('is-anonymous-checkbox');
             const isAnonChecked = isLoggedIn && anonCheckbox && anonCheckbox.checked;
 
             const anonNameStr = window.t ? (window.t('author_anonymous') || window.t('anonymous_citizen') || 'Анонимный гражданин') : 'Анонимный гражданин';
 
-            let submitUsername = 'Гость';
+            let submitDisplayUsername = 'Гость';
             let submitAvatar = '';
             let submitIsAnon = 'true';
 
             if (isLoggedIn) {
                 if (isAnonChecked) {
-                    submitUsername = anonNameStr;
+                    submitDisplayUsername = anonNameStr;
                     submitAvatar = '';
                     submitIsAnon = 'true';
                 } else {
-                    submitUsername = currentUsername;
-                    submitAvatar = getUserAvatar(currentUsername);
+                    submitDisplayUsername = currentAccount;
+                    submitAvatar = getUserAvatar(currentAccount);
                     submitIsAnon = 'false';
                 }
+            } else {
+                submitDisplayUsername = 'Гость';
+                submitAvatar = '';
+                submitIsAnon = 'true';
             }
 
             const categoryEl = document.getElementById('report-category');
@@ -1927,7 +1933,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 submitBtn.textContent = window.t ? (window.t('submitting') || window.t('btn_submitting') || 'Отправка...') : 'Отправка...';
 
-                // 2. Отправка легковесного JSON с публичной ссылкой на сервер
+                // 2. Отправка легковесного JSON с публичной ссылкой на сервер (передаем строго автора текущей сессии)
                 const response = await fetch('/api/problems', {
                     method: 'POST',
                     headers: {
@@ -1937,7 +1943,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         description: descValue,
                         latitude: parseFloat(latValue),
                         longitude: parseFloat(lngValue),
-                        username: submitUsername,
+                        username: submitDisplayUsername,
+                        author: currentAccount,
+                        user_id_name: currentAccount,
                         category: categoryValue,
                         isAnonymous: submitIsAnon,
                         userAvatar: submitAvatar,

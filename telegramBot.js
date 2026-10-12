@@ -256,36 +256,44 @@ async function sendReportToGroup(report, pool, publicDir) {
 
   try {
     if (report.photo_url) {
-      if (report.photo_url.startsWith('http://') || report.photo_url.startsWith('https://')) {
-        response = await callTelegramApi('sendPhoto', {
-          chat_id: chatId,
-          photo: report.photo_url,
-          caption: caption,
-          parse_mode: 'HTML',
-          reply_markup: replyMarkup
-        });
-      } else if (report.photo_url.startsWith('data:image/')) {
-        const base64Data = report.photo_url.split(',')[1];
-        const buffer = Buffer.from(base64Data, 'base64');
-        response = await sendPhotoBufferMultipart(chatId, buffer, caption, replyMarkup);
-      } else {
-        const relativePath = report.photo_url.startsWith('/') ? report.photo_url.slice(1) : report.photo_url;
-        const localFilePath = path.join(publicDir || path.join(__dirname, 'public'), relativePath);
+      try {
+        if (report.photo_url.startsWith('http://') || report.photo_url.startsWith('https://')) {
+          response = await callTelegramApi('sendPhoto', {
+            chat_id: chatId,
+            photo: report.photo_url,
+            caption: caption,
+            parse_mode: 'HTML',
+            reply_markup: replyMarkup
+          });
+        } else if (report.photo_url.startsWith('data:image/')) {
+          const base64Data = report.photo_url.split(',')[1];
+          const buffer = Buffer.from(base64Data, 'base64');
+          response = await sendPhotoBufferMultipart(chatId, buffer, caption, replyMarkup);
+        } else {
+          const relativePath = report.photo_url.startsWith('/') ? report.photo_url.slice(1) : report.photo_url;
+          const localFilePath = path.join(publicDir || path.join(__dirname, 'public'), relativePath);
 
-        if (fs.existsSync(localFilePath)) {
-          response = await sendPhotoMultipart(chatId, localFilePath, caption, replyMarkup);
+          if (fs.existsSync(localFilePath)) {
+            response = await sendPhotoMultipart(chatId, localFilePath, caption, replyMarkup);
+          }
         }
+      } catch (photoErr) {
+        console.error('Error sending photo to Telegram (falling back to text message):', photoErr && (photoErr.message || photoErr));
       }
     }
 
     if (!response || !response.ok) {
-      response = await callTelegramApi('sendMessage', {
-        chat_id: chatId,
-        text: caption,
-        parse_mode: 'HTML',
-        reply_markup: replyMarkup,
-        disable_web_page_preview: false
-      });
+      try {
+        response = await callTelegramApi('sendMessage', {
+          chat_id: chatId,
+          text: caption,
+          parse_mode: 'HTML',
+          reply_markup: replyMarkup,
+          disable_web_page_preview: false
+        });
+      } catch (textErr) {
+        console.error('Error sending text message to Telegram:', textErr && (textErr.message || textErr));
+      }
     }
 
     if (response && response.ok && response.result) {
