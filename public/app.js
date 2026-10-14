@@ -1766,55 +1766,72 @@ document.addEventListener("DOMContentLoaded", () => {
             return _supabaseStorageConfig || { supabaseUrl: '', supabaseAnonKey: '' };
         }
 
-        // Optimize image client-side to save bandwidth and ensure fast upload
+        // Безопасное клиентское сжатие изображений через HTML5 Canvas
+        // Если сторона > 1200px — масштабируем пропорционально, сжимаем в JPEG 80%.
+        // При любой ошибке canvas — fallback на оригинальный файл без зависания формы.
         async function optimizeImageForUpload(file) {
             if (!file || !file.type || !file.type.startsWith('image/')) return file;
-            if (file.size <= 800 * 1024) return file;
 
             return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        try {
-                            const maxDimension = 1920;
-                            let width = img.width;
-                            let height = img.height;
+                try {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            try {
+                                const maxDimension = 1200;
+                                let width = img.width;
+                                let height = img.height;
 
-                            if (width > maxDimension || height > maxDimension) {
-                                if (width > height) {
-                                    height = Math.round((height * maxDimension) / width);
-                                    width = maxDimension;
+                                // Пропорциональное масштабирование только если нужно
+                                if (width > maxDimension || height > maxDimension) {
+                                    if (width > height) {
+                                        height = Math.round((height * maxDimension) / width);
+                                        width = maxDimension;
+                                    } else {
+                                        width = Math.round((width * maxDimension) / height);
+                                        height = maxDimension;
+                                    }
                                 } else {
-                                    width = Math.round((width * maxDimension) / height);
-                                    height = maxDimension;
-                                }
-                            }
-
-                            const canvas = document.createElement('canvas');
-                            canvas.width = width;
-                            canvas.height = height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0, width, height);
-
-                            canvas.toBlob((blob) => {
-                                if (blob && blob.size < file.size) {
-                                    const safeName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
-                                    resolve(new File([blob], safeName, { type: 'image/jpeg' }));
-                                } else {
+                                    // Размеры в пределах нормы — возвращаем оригинал
                                     resolve(file);
+                                    return;
                                 }
-                            }, 'image/jpeg', 0.85);
-                        } catch (err) {
-                            console.warn("Canvas compression fallback:", err);
-                            resolve(file);
-                        }
+
+                                const canvas = document.createElement('canvas');
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext('2d');
+                                if (!ctx) { resolve(file); return; }
+                                ctx.drawImage(img, 0, 0, width, height);
+
+                                canvas.toBlob((blob) => {
+                                    try {
+                                        if (blob && blob.size < file.size) {
+                                            const safeName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                                            resolve(new File([blob], safeName, { type: 'image/jpeg' }));
+                                        } else {
+                                            resolve(file);
+                                        }
+                                    } catch (blobErr) {
+                                        console.warn('Canvas toBlob fallback:', blobErr);
+                                        resolve(file);
+                                    }
+                                }, 'image/jpeg', 0.8);
+                            } catch (canvasErr) {
+                                console.warn('Canvas compression fallback:', canvasErr);
+                                resolve(file);
+                            }
+                        };
+                        img.onerror = () => resolve(file);
+                        img.src = e.target.result;
                     };
-                    img.onerror = () => resolve(file);
-                    img.src = e.target.result;
-                };
-                reader.onerror = () => resolve(file);
-                reader.readAsDataURL(file);
+                    reader.onerror = () => resolve(file);
+                    reader.readAsDataURL(file);
+                } catch (outerErr) {
+                    console.warn('optimizeImageForUpload outer fallback:', outerErr);
+                    resolve(file);
+                }
             });
         }
 
@@ -1991,6 +2008,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // Очистка формы через resetFormState
                     resetFormState();
+
+                    // Мгновенное обновление профиля: счётчики, ачивки и история
+                    // Обёрнуто в try...catch — сбой не блокирует форму
+                    try {
+                        if (typeof loadProfileHistory === 'function') {
+                            loadProfileHistory();
+                        }
+                    } catch (profileErr) {
+                        console.warn('Profile update after submit failed (non-critical):', profileErr);
+                    }
 
                     // Обновляем карту в фоне
                     if (window.fetchProblemsAndDraw) {
