@@ -130,13 +130,27 @@
             </div>
         </header>
         <script>
-            // Pilot Mode — controlled from Admin Panel (writes localStorage key 'vaisperia_pilot_mode')
-            document.addEventListener('DOMContentLoaded', function() {
-                const badge = document.getElementById('pilot-mode-badge');
-                if (badge && localStorage.getItem('vaisperia_pilot_mode') === 'true') {
-                    badge.style.display = 'inline-flex';
+            // Pilot Mode — reads vaisperia_pilot_mode from localStorage (set by Admin Panel at /admin)
+            (function () {
+                var PILOT_KEY = 'vaisperia_pilot_mode';
+
+                function applyPilotBadge() {
+                    var badge = document.getElementById('pilot-mode-badge');
+                    if (!badge) return;
+                    badge.style.display = localStorage.getItem(PILOT_KEY) === 'true' ? 'inline-flex' : 'none';
                 }
-            });
+
+                // 1. Run synchronously right now — badge element is already parsed above this script
+                applyPilotBadge();
+
+                // 2. Re-check after full DOM ready (catches app.js init)
+                document.addEventListener('DOMContentLoaded', applyPilotBadge);
+
+                // 3. Live update when admin toggles from another tab/window
+                window.addEventListener('storage', function (e) {
+                    if (e.key === PILOT_KEY) applyPilotBadge();
+                });
+            })();
         </script>
 
         <!-- Main Content (Seeded Screens) -->
