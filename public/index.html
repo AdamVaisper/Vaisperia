@@ -130,11 +130,12 @@
             </div>
         </header>
         <script>
-            // Pilot Mode toggle — set to false to hide the badge, true to show it
-            const PILOT_MODE_ENABLED = true;
+            // Pilot Mode — controlled from Admin Panel (writes localStorage key 'vaisperia_pilot_mode')
             document.addEventListener('DOMContentLoaded', function() {
                 const badge = document.getElementById('pilot-mode-badge');
-                if (badge && PILOT_MODE_ENABLED) badge.style.display = 'inline-flex';
+                if (badge && localStorage.getItem('vaisperia_pilot_mode') === 'true') {
+                    badge.style.display = 'inline-flex';
+                }
             });
         </script>
 
@@ -600,8 +601,8 @@
                 <!-- Связь с администрацией -->
                 <div class="tg-setting-row" style="margin-top: 16px;">
                     <div class="tg-setting-info">
-                        <span class="tg-title">Связь с администрацией</span>
-                        <span class="tg-desc">Вопросы, предложения, обратная связь</span>
+                        <span class="tg-title" data-i18n="admin_contact_title">Связь с администрацией</span>
+                        <span class="tg-desc" data-i18n="admin_contact_desc">Вопросы, предложения, обратная связь</span>
                     </div>
                     <a href="https://t.me/yuchiir" target="_blank" rel="noopener noreferrer" id="adminContactLink" class="tg-contact-admin-btn" title="Написать администратору">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>

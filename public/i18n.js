@@ -185,6 +185,8 @@
             clear_cache: "🗑️ Очистить историю и кэш приложения",
             msg_cache_cleared: "История и кэш приложения успешно очищены!",
             logout_profile: "Выйти из аккаунта ↩",
+            admin_contact_title: "Связь с администрацией",
+            admin_contact_desc: "Вопросы, предложения, обратная связь",
             
             status_new: "Новый",
             status_in_progress: "В обработке",
@@ -416,6 +418,8 @@
             clear_cache: "🗑️ Tarix va keshni tozalash",
             msg_cache_cleared: "Tarix va ilova keshi muvaffaqiyatli tozalandi!",
             logout_profile: "Hisobdan chiqish ↩",
+            admin_contact_title: "Murojaat markazi",
+            admin_contact_desc: "Savollar, takliflar, fikr-mulohazalar",
             
             status_new: "Yangi",
             status_in_progress: "Jarayonda",
@@ -647,6 +651,8 @@
             clear_cache: "🗑️ Clear history and app cache",
             msg_cache_cleared: "App history and cache cleared successfully!",
             logout_profile: "Log out ↩",
+            admin_contact_title: "Contact Administration",
+            admin_contact_desc: "Questions, suggestions, feedback",
             
             status_new: "New",
             status_in_progress: "In Progress",

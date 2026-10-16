@@ -631,6 +631,16 @@
                 </div>
             </div>
             <div class="header-actions">
+                <!-- Pilot Mode Toggle -->
+                <div id="pilotModeControl" style="display:inline-flex; align-items:center; gap:10px; background:rgba(46,204,113,0.08); border:1px solid var(--admin-border); border-radius:14px; padding:7px 14px;">
+                    <span style="font-size:0.82rem; font-weight:600; color:var(--admin-text-main); white-space:nowrap;">✅ Pilot Mode</span>
+                    <label style="position:relative; display:inline-block; width:42px; height:24px; cursor:pointer; flex-shrink:0;">
+                        <input type="checkbox" id="pilotModeToggle" style="opacity:0; width:0; height:0; position:absolute;">
+                        <span id="pilotModeSlider" style="position:absolute; inset:0; background:#334155; border-radius:24px; transition:background 0.25s; display:block;"></span>
+                        <span id="pilotModeThumb" style="position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; border-radius:50%; transition:transform 0.25s; display:block;"></span>
+                    </label>
+                    <span id="pilotModeStatus" style="font-size:0.75rem; font-weight:700; min-width:28px;">OFF</span>
+                </div>
                 <button id="adminRefreshBtn" class="btn-admin-action">🔄 Обновить данные</button>
                 <button id="adminLogoutBtn" class="btn-admin-action btn-logout-danger">🚪 Выйти</button>
             </div>
@@ -715,6 +725,34 @@
             const adminRefreshBtn = document.getElementById('adminRefreshBtn');
             const searchInput = document.getElementById('searchCitizens');
             const toast = document.getElementById('adminToast');
+
+            // ── Pilot Mode Toggle ──────────────────────────────────────────
+            const pilotToggle  = document.getElementById('pilotModeToggle');
+            const pilotSlider  = document.getElementById('pilotModeSlider');
+            const pilotThumb   = document.getElementById('pilotModeThumb');
+            const pilotStatus  = document.getElementById('pilotModeStatus');
+            const PILOT_KEY    = 'vaisperia_pilot_mode';
+
+            function applyPilotVisual(enabled) {
+                pilotToggle.checked = enabled;
+                pilotSlider.style.background = enabled ? '#2ecc71' : '#334155';
+                pilotThumb.style.transform   = enabled ? 'translateX(18px)' : 'translateX(0)';
+                pilotStatus.textContent      = enabled ? 'ON'  : 'OFF';
+                pilotStatus.style.color      = enabled ? '#2ecc71' : '#94a3b8';
+            }
+
+            // Load saved state
+            applyPilotVisual(localStorage.getItem(PILOT_KEY) === 'true');
+
+            pilotToggle.addEventListener('change', () => {
+                const enabled = pilotToggle.checked;
+                localStorage.setItem(PILOT_KEY, String(enabled));
+                applyPilotVisual(enabled);
+                showToast(enabled
+                    ? '✅ Pilot Mode включён — бейдж отображается на главной'
+                    : '⛔ Pilot Mode выключен — бейдж скрыт на главной');
+            });
+            // ──────────────────────────────────────────────────────────────
 
             // Elements
             const statUsers = document.getElementById('statUsers');
