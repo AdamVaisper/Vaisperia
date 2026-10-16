@@ -789,7 +789,10 @@ app.post('/api/problems', (req, res, next) => {
       status: 'new',
       user_avatar: avatarData,
       is_anonymous: isAnon ? 1 : 0,
-      timestamp: reportTimestamp ? reportTimestamp.toISOString() : new Date().toISOString()
+      timestamp: reportTimestamp ? reportTimestamp.toISOString() : new Date().toISOString(),
+      // Internal-only field: always carries the real account for Telegram admin visibility
+      // NOT stored in DB, NOT returned in public API, anonymity preserved on map
+      sender_username: (realUser && realUser !== 'Гость') ? realUser : null
     };
 
     // Отказоустойчивая отправка в Telegram в изолированном блоке try/catch:

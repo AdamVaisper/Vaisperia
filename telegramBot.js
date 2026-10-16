@@ -63,6 +63,12 @@ function buildMessageCaption(report, statusSuffix = '') {
   const dateStr = formatTashkentDate(report.timestamp || report.created_at);
   const cat = report.category || 'Другое';
 
+  // Always show real sender username in Telegram (internal admin view)
+  // sender_username is the real account, regardless of anonymity flag
+  const senderLine = report.sender_username
+    ? `<b>Отправитель:</b> @${escapeHtml(report.sender_username)}`
+    : `<b>Отправитель:</b> Гость (не авторизован)`;
+
   let text = [
     `🚨 <b>НОВАЯ ЗАЯВКА #${report.id}</b>`,
     ``,
@@ -70,6 +76,7 @@ function buildMessageCaption(report, statusSuffix = '') {
     `<b>Адрес / Ориентир:</b> ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
     `<b>Описание:</b> ${escapeHtml(report.description)}`,
     `<b>Дата:</b> ${dateStr}`,
+    senderLine,
     ``,
     `📍 <a href="${mapLink}">Открыть место на карте</a>`
   ].join('\n');
