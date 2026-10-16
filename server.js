@@ -175,6 +175,20 @@ async function initDb() {
       WHERE (username IS NULL OR username = '') AND (user_id_name IS NULL OR user_id_name = '')
     `);
     console.log('Legacy unassigned problem records assigned to Adam_Vaisper');
+
+    // App-wide key-value settings table (used for pilot_mode and future flags)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL DEFAULT 'false'
+      );
+    `);
+    await pool.query(`
+      INSERT INTO settings (key, value) VALUES ('pilot_mode', 'false')
+      ON CONFLICT (key) DO NOTHING;
+    `);
+    console.log('Settings table ready');
+
     console.log('Connected to PostgreSQL (Supabase)');
   } catch (err) {
     console.error('DB init error:', err.message);
@@ -740,6 +754,34 @@ app.get('/api/storage-config', (req, res) => {
     supabaseUrl: process.env.SUPABASE_URL || 'https://gfbukhbuuemxsensrsvm.supabase.co',
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
   });
+});
+
+// 4.6. Pilot Mode setting — public read
+app.get('/api/settings/pilot_mode', async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT value FROM settings WHERE key = 'pilot_mode'");
+    const value = rows.length > 0 ? rows[0].value === 'true' : false;
+    res.json({ pilot_mode: value });
+  } catch (err) {
+    res.json({ pilot_mode: false });
+  }
+});
+
+// 4.7. Pilot Mode setting — admin-protected write
+app.post('/api/admin/settings/pilot_mode', async (req, res) => {
+  if (!verifyAdminAuth(req)) {
+    return res.status(403).json({ error: 'Доступ запрещен. Неверный пароль администратора.' });
+  }
+  const enabled = req.body.enabled === true || req.body.enabled === 'true';
+  try {
+    await pool.query(
+      "INSERT INTO settings (key, value) VALUES ('pilot_mode', $1) ON CONFLICT (key) DO UPDATE SET value = $1",
+      [String(enabled)]
+    );
+    res.json({ success: true, pilot_mode: enabled });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 5. Report a new problem (Strictly CREATE / INSERT new record with unique ID)

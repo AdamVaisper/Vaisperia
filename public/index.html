@@ -130,25 +130,40 @@
             </div>
         </header>
         <script>
-            // Pilot Mode — reads vaisperia_pilot_mode from localStorage (set by Admin Panel at /admin)
+            // Pilot Mode — source of truth is Supabase via /api/settings/pilot_mode
+            // localStorage used as instant first-render cache until fetch resolves
             (function () {
                 var PILOT_KEY = 'vaisperia_pilot_mode';
 
-                function applyPilotBadge() {
+                function applyPilotBadge(visible) {
                     var badge = document.getElementById('pilot-mode-badge');
                     if (!badge) return;
-                    badge.style.display = localStorage.getItem(PILOT_KEY) === 'true' ? 'inline-flex' : 'none';
+                    badge.style.display = visible ? 'inline-flex' : 'none';
                 }
 
-                // 1. Run synchronously right now — badge element is already parsed above this script
-                applyPilotBadge();
+                // 1. Instant render from localStorage cache (avoids visual flash)
+                applyPilotBadge(localStorage.getItem(PILOT_KEY) === 'true');
 
-                // 2. Re-check after full DOM ready (catches app.js init)
-                document.addEventListener('DOMContentLoaded', applyPilotBadge);
+                // 2. Authoritative fetch from Supabase — updates badge and refreshes cache
+                function fetchPilotMode() {
+                    fetch('/api/settings/pilot_mode')
+                        .then(function(r) { return r.ok ? r.json() : Promise.reject(); })
+                        .then(function(data) {
+                            var enabled = !!data.pilot_mode;
+                            localStorage.setItem(PILOT_KEY, String(enabled));
+                            applyPilotBadge(enabled);
+                        })
+                        .catch(function() {
+                            // Server unreachable — keep localStorage value already applied
+                        });
+                }
 
-                // 3. Live update when admin toggles from another tab/window
-                window.addEventListener('storage', function (e) {
-                    if (e.key === PILOT_KEY) applyPilotBadge();
+                // Fetch after DOM is ready
+                document.addEventListener('DOMContentLoaded', fetchPilotMode);
+
+                // 3. Live update if admin toggles in another tab on same device
+                window.addEventListener('storage', function(e) {
+                    if (e.key === PILOT_KEY) applyPilotBadge(e.newValue === 'true');
                 });
             })();
         </script>

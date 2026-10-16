@@ -741,16 +741,45 @@
                 pilotStatus.style.color      = enabled ? '#2ecc71' : '#94a3b8';
             }
 
-            // Load saved state
-            applyPilotVisual(localStorage.getItem(PILOT_KEY) === 'true');
+            // Load state from Supabase (source of truth); fallback to localStorage
+            fetch('/api/settings/pilot_mode')
+                .then(r => r.ok ? r.json() : Promise.reject())
+                .then(data => {
+                    applyPilotVisual(!!data.pilot_mode);
+                    localStorage.setItem(PILOT_KEY, String(!!data.pilot_mode));
+                })
+                .catch(() => {
+                    applyPilotVisual(localStorage.getItem(PILOT_KEY) === 'true');
+                });
 
             pilotToggle.addEventListener('change', () => {
                 const enabled = pilotToggle.checked;
-                localStorage.setItem(PILOT_KEY, String(enabled));
+                const token = getAdminToken();
                 applyPilotVisual(enabled);
-                showToast(enabled
-                    ? '✅ Pilot Mode включён — бейдж отображается на главной'
-                    : '⛔ Pilot Mode выключен — бейдж скрыт на главной');
+                localStorage.setItem(PILOT_KEY, String(enabled));
+
+                // Persist to Supabase via admin-protected endpoint
+                fetch('/api/admin/settings/pilot_mode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-password': token || ''
+                    },
+                    body: JSON.stringify({ enabled: enabled })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(enabled
+                            ? '✅ Pilot Mode включён и сохранён в Supabase'
+                            : '⛔ Pilot Mode выключен и сохранён в Supabase');
+                    } else {
+                        showToast('⚠️ Ошибка сохранения: ' + (data.error || 'неизвестная ошибка'));
+                    }
+                })
+                .catch(() => {
+                    showToast('⚠️ Сохранено локально (нет связи с сервером)');
+                });
             });
             // ──────────────────────────────────────────────────────────────
 
