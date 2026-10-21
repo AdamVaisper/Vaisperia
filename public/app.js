@@ -608,75 +608,63 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    function requestLocationForReport(showModalOnFail = false) {
+    function requestLocationForReport() {
         const latInput = document.getElementById('latitude');
         const lngInput = document.getElementById('longitude');
         const locStatus = document.getElementById('locationStatus');
         const submitBtn = document.getElementById('submitBtn');
 
-        const savedLat = localStorage.getItem('selectedLat');
-        const savedLng = localStorage.getItem('selectedLng');
+        if (!latInput || !lngInput) return;
 
-        if (savedLat && savedLng) {
-            if (latInput && lngInput) {
-                latInput.value = parseFloat(savedLat).toFixed(6);
-                lngInput.value = parseFloat(savedLng).toFixed(6);
-                if (locStatus) {
-                    locStatus.textContent = "Координаты загружены с карты ✓";
-                    locStatus.style.color = "#2ecc71";
-                }
-                if (submitBtn) submitBtn.disabled = false;
+        // Сброс координат и блокировка кнопки до получения GPS
+        latInput.value = '';
+        lngInput.value = '';
+        if (submitBtn) submitBtn.disabled = true;
+
+        if (!("geolocation" in navigator)) {
+            if (locStatus) {
+                locStatus.textContent = window.t
+                    ? window.t('loc_not_supported', '⚠️ Ваш браузер не поддерживает геолокацию. Отправка недоступна.')
+                    : '⚠️ Ваш браузер не поддерживает геолокацию. Отправка недоступна.';
+                locStatus.style.color = "#ef4444";
             }
-            localStorage.removeItem('selectedLat');
-            localStorage.removeItem('selectedLng');
+            // submitBtn остаётся disabled
             return;
         }
 
-        if (!latInput || !lngInput) return;
+        if (locStatus) {
+            locStatus.textContent = window.t ? window.t('loc_loading', 'Загрузка геолокации...') : 'Загрузка геолокации...';
+            locStatus.style.color = "var(--text-muted)";
+        }
 
-        if ("geolocation" in navigator) {
-            if (locStatus) {
-                locStatus.textContent = "Загрузка геолокации...";
-                locStatus.style.color = "var(--text-muted)";
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    latInput.value = position.coords.latitude.toFixed(6);
-                    lngInput.value = position.coords.longitude.toFixed(6);
-                    if (locStatus) {
-                        locStatus.textContent = window.t ? window.t('loc_success', 'Геопозиция определена успешно ✓') : 'Геопозиция определена успешно ✓';
-                        locStatus.style.color = "#2ecc71";
-                    }
-                    if (submitBtn) submitBtn.disabled = false;
-                    const geoModal = document.getElementById('geo-modal');
-                    if (geoModal) geoModal.classList.add('hidden');
-                },
-                (error) => {
-                    console.warn("Geolocation prompt or access failed:", error);
-                    if (locStatus) {
-                        locStatus.textContent = window.t ? window.t('loc_denied', 'Геолокация отклонена. Укажите координаты на карте.') : 'Геолокация отклонена. Укажите координаты на карте.';
-                        locStatus.style.color = "#ef4444";
-                    }
-                    if (submitBtn) submitBtn.disabled = false;
-                    if (showModalOnFail) {
-                        const geoModal = document.getElementById('geo-modal');
-                        if (geoModal) geoModal.classList.remove('hidden');
-                    }
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        } else {
-            if (locStatus) {
-                locStatus.textContent = "Браузер не поддерживает автоопределение.";
-                locStatus.style.color = "#ef4444";
-            }
-            if (submitBtn) submitBtn.disabled = false;
-            if (showModalOnFail) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                latInput.value = position.coords.latitude.toFixed(6);
+                lngInput.value = position.coords.longitude.toFixed(6);
+                if (locStatus) {
+                    locStatus.textContent = window.t ? window.t('loc_success', 'Геопозиция определена успешно ✓') : 'Геопозиция определена успешно ✓';
+                    locStatus.style.color = "#2ecc71";
+                }
+                if (submitBtn) submitBtn.disabled = false;
+                const geoModal = document.getElementById('geo-modal');
+                if (geoModal) geoModal.classList.add('hidden');
+            },
+            (error) => {
+                console.warn("Geolocation access denied or failed:", error);
+                latInput.value = '';
+                lngInput.value = '';
+                if (locStatus) {
+                    locStatus.textContent = window.t
+                        ? window.t('loc_denied_gps', '⚠️ Геолокация отключена или запрещена. Пожалуйста, включите GPS на устройстве и разрешите доступ в браузере, затем вернитесь сюда.')
+                        : '⚠️ Геолокация отключена или запрещена. Пожалуйста, включите GPS на устройстве и разрешите доступ в браузере, затем вернитесь сюда.';
+                    locStatus.style.color = "#ef4444";
+                }
+                // submitBtn остаётся disabled — отправка заблокирована
                 const geoModal = document.getElementById('geo-modal');
                 if (geoModal) geoModal.classList.remove('hidden');
-            }
-        }
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
     }
     window.requestLocationForReport = requestLocationForReport;
 
@@ -712,29 +700,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 150);
             }
 
-            // Если перешли в "Добавить", запрашиваем геолокацию при включенном автоопределении
+            // При переходе в "Добавить" — всегда запрашиваем GPS геолокацию
             if (targetTab === 'report') {
-                if (isAutoGeoEnabled()) {
-                    requestLocationForReport(true);
-                } else {
-                    const savedLat = localStorage.getItem('selectedLat');
-                    const savedLng = localStorage.getItem('selectedLng');
-                    const latInput = document.getElementById('latitude');
-                    const lngInput = document.getElementById('longitude');
-                    const locStatus = document.getElementById('locationStatus');
-                    const submitBtn = document.getElementById('submitBtn');
-                    if (savedLat && savedLng && latInput && lngInput) {
-                        latInput.value = parseFloat(savedLat).toFixed(6);
-                        lngInput.value = parseFloat(savedLng).toFixed(6);
-                        if (locStatus) {
-                            locStatus.textContent = "Координаты загружены с карты ✓";
-                            locStatus.style.color = "#2ecc71";
-                        }
-                        if (submitBtn) submitBtn.disabled = false;
-                        localStorage.removeItem('selectedLat');
-                        localStorage.removeItem('selectedLng');
-                    }
-                }
+                requestLocationForReport();
             }
             
             // При открытии профиля обновляем информацию
@@ -824,72 +792,8 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        let selectMarker = null;
-
-        window.confirmLocationSelect = (lat, lng) => {
-            localStorage.setItem('selectedLat', lat);
-            localStorage.setItem('selectedLng', lng);
-
-            const latInput = document.getElementById('latitude');
-            const lngInput = document.getElementById('longitude');
-            const locStatus = document.getElementById('locationStatus');
-            const submitBtn = document.getElementById('submitBtn');
-
-            if (latInput && lngInput) {
-                latInput.value = parseFloat(lat).toFixed(6);
-                lngInput.value = parseFloat(lng).toFixed(6);
-
-                if (locStatus) {
-                    locStatus.textContent = "Координаты выбраны на карте ✓";
-                    locStatus.style.color = "#2ecc71";
-                }
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                }
-            }
-
-            if (selectMarker) {
-                map.removeLayer(selectMarker);
-                selectMarker = null;
-            }
-            if (map) {
-                map.closePopup();
-            }
-
-            const addTabBtn = document.querySelector('.nav-tab[data-tab="report"]');
-            if (addTabBtn) {
-                addTabBtn.click();
-            }
-        };
-
-        const handleLocationClick = (lat, lng) => {
-            if (selectMarker) {
-                map.removeLayer(selectMarker);
-            }
-
-            selectMarker = L.marker([lat, lng], {
-                icon: createPinIcon('#3b82f6')
-            }).addTo(map);
-
-            const popupHtml = `
-                <div style="text-align: center; padding: 4px;">
-                    <div style="font-size: 0.8rem; font-weight: 700; margin-bottom: 4px; color: #1e293b;">📍 Выбранное место</div>
-                    <div style="font-size: 0.72rem; color: #64748b; margin-bottom: 8px;">${parseFloat(lat).toFixed(5)}, ${parseFloat(lng).toFixed(5)}</div>
-                    <button type="button" onclick="event.stopPropagation(); window.confirmLocationSelect(${lat}, ${lng});" class="btn-resolve" style="background: #10b981; margin: 0; width: 100%;">Выбрать эту точку</button>
-                </div>
-            `;
-
-            selectMarker.bindPopup(popupHtml, {
-                autoPan: true,
-                autoPanPadding: [20, 20],
-                maxWidth: 240
-            }).openPopup();
-        };
-
-        // Клик по карте показывает маркер-превью и кнопку подтверждения
-        map.on('click', function(e) {
-            handleLocationClick(e.latlng.lat, e.latlng.lng);
-        });
+        // Выбор координат вручную через карту отключён.
+        // Координаты передаются только через GPS (navigator.geolocation).
 
         // Кнопка статистики
         const statsBtn = document.createElement('button');
