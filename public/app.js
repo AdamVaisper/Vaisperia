@@ -1286,14 +1286,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
-            // Поиск соседних отчетов в той же локации (радиус ~250м), если список не был передан
+            // Поиск соседних отчетов в той же локации (погрешность не более ~5 метров), если список не был передан
             if (!clusterList) {
                 const targetLat = problem.latitude;
                 const targetLng = problem.longitude;
                 clusterList = (allDbProblemsData || []).filter(p => {
                     const dLat = Math.abs(p.latitude - targetLat);
                     const dLng = Math.abs(p.longitude - targetLng);
-                    return dLat <= 0.003 && dLng <= 0.003;
+                    return dLat <= 0.00005 && dLng <= 0.00005;
                 });
                 clusterIndex = clusterList.findIndex(p => p.id === problem.id);
                 if (clusterIndex === -1) {
