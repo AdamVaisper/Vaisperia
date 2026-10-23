@@ -608,7 +608,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    function requestLocationForReport() {
+    async function requestLocationForReport() {
         const latInput = document.getElementById('latitude');
         const lngInput = document.getElementById('longitude');
         const locStatus = document.getElementById('locationStatus');
@@ -633,9 +633,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (locStatus) {
-            locStatus.textContent = window.t ? window.t('loc_loading', 'Загрузка геолокации...') : 'Загрузка геолокации...';
+            locStatus.textContent = window.t ? window.t('loc_gps_warmup', 'Идет точное определение GPS...') : 'Идет точное определение GPS...';
             locStatus.style.color = "var(--text-muted)";
         }
+
+        // Небольшая пауза (7 сек), чтобы мобильный GPS-модуль успел поймать спутники
+        await new Promise(resolve => setTimeout(resolve, 7000));
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -663,7 +666,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const geoModal = document.getElementById('geo-modal');
                 if (geoModal) geoModal.classList.remove('hidden');
             },
-            { enableHighAccuracy: true, timeout: 10000 }
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
         );
     }
     window.requestLocationForReport = requestLocationForReport;
