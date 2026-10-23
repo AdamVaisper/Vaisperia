@@ -637,37 +637,79 @@ document.addEventListener("DOMContentLoaded", () => {
             locStatus.style.color = "var(--text-muted)";
         }
 
-        // Небольшая пауза (7 сек), чтобы мобильный GPS-модуль успел поймать спутники
-        await new Promise(resolve => setTimeout(resolve, 7000));
+        // Опции с maximumAge: 0 — браузер никогда не берёт кэш
+        const GEO_OPTS = { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 };
 
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                latInput.value = position.coords.latitude.toFixed(6);
-                lngInput.value = position.coords.longitude.toFixed(6);
-                if (locStatus) {
-                    locStatus.textContent = window.t ? window.t('loc_success', 'Геопозиция определена успешно ✓') : 'Геопозиция определена успешно ✓';
-                    locStatus.style.color = "#2ecc71";
-                }
-                if (submitBtn) submitBtn.disabled = false;
-                const geoModal = document.getElementById('geo-modal');
-                if (geoModal) geoModal.classList.add('hidden');
-            },
-            (error) => {
-                console.warn("Geolocation access denied or failed:", error);
-                latInput.value = '';
-                lngInput.value = '';
+        // Используем watchPosition вместо getCurrentPosition.
+        // Первое событие может прийти из кэша ОС/браузера — мы его сбрасываем.
+        // Второе событие — реальный GPS-фикс с нулевым кэшем.
+        await new Promise((resolve) => {
+            let readingCount = 0;
+            let watchId = null;
+            let settled = false;
+
+            // Жёсткий таймаут: если за 20 с второй фикс не пришёл — берём первый (или ошибку)
+            const hardTimeout = setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                if (watchId !== null) navigator.geolocation.clearWatch(watchId);
                 if (locStatus) {
                     locStatus.textContent = window.t
                         ? window.t('loc_denied_gps', '⚠️ Геолокация отключена или запрещена. Пожалуйста, включите GPS на устройстве и разрешите доступ в браузере, затем вернитесь сюда.')
                         : '⚠️ Геолокация отключена или запрещена. Пожалуйста, включите GPS на устройстве и разрешите доступ в браузере, затем вернитесь сюда.';
                     locStatus.style.color = "#ef4444";
                 }
-                // submitBtn остаётся disabled — отправка заблокирована
                 const geoModal = document.getElementById('geo-modal');
                 if (geoModal) geoModal.classList.remove('hidden');
-            },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
-        );
+                resolve();
+            }, 20000);
+
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    readingCount++;
+                    if (readingCount < 2) {
+                        // Первое показание — возможно кэш ОС, игнорируем
+                        return;
+                    }
+                    // Второе (и далее) — свежий GPS-фикс
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(hardTimeout);
+                    navigator.geolocation.clearWatch(watchId);
+
+                    latInput.value = position.coords.latitude.toFixed(6);
+                    lngInput.value = position.coords.longitude.toFixed(6);
+                    if (locStatus) {
+                        locStatus.textContent = window.t ? window.t('loc_success', 'Геопозиция определена успешно ✓') : 'Геопозиция определена успешно ✓';
+                        locStatus.style.color = "#2ecc71";
+                    }
+                    if (submitBtn) submitBtn.disabled = false;
+                    const geoModal = document.getElementById('geo-modal');
+                    if (geoModal) geoModal.classList.add('hidden');
+                    resolve();
+                },
+                (error) => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(hardTimeout);
+                    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                    console.warn("Geolocation access denied or failed:", error);
+                    latInput.value = '';
+                    lngInput.value = '';
+                    if (locStatus) {
+                        locStatus.textContent = window.t
+                            ? window.t('loc_denied_gps', '⚠️ Геолокация отключена или запрещена. Пожалуйста, включите GPS на устройстве и разрешите доступ в браузере, затем вернитесь сюда.')
+                            : '⚠️ Геолокация отключена или запрещена. Пожалуйста, включите GPS на устройстве и разрешите доступ в браузере, затем вернитесь сюда.';
+                        locStatus.style.color = "#ef4444";
+                    }
+                    // submitBtn остаётся disabled — отправка заблокирована
+                    const geoModal = document.getElementById('geo-modal');
+                    if (geoModal) geoModal.classList.remove('hidden');
+                    resolve();
+                },
+                GEO_OPTS
+            );
+        });
     }
     window.requestLocationForReport = requestLocationForReport;
 
