@@ -765,6 +765,44 @@
             border-color: var(--admin-border);
         }
 
+        /* ===== Marker info popup ===== */
+        .adm-pop { font-family: Inter, sans-serif; width: 240px; }
+        .adm-pop-title { font-weight: 700; font-size: 0.92rem; color: #fff; margin-bottom: 8px; }
+        .adm-pop-photo {
+            display: block; width: 100%; height: 140px; object-fit: cover;
+            border-radius: 10px; border: 1px solid var(--admin-border);
+            cursor: zoom-in; margin-bottom: 8px; transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .adm-pop-photo:hover { transform: scale(1.02); box-shadow: 0 6px 18px rgba(46,204,113,0.25); }
+        .adm-pop-nophoto {
+            height: 60px; display: flex; align-items: center; justify-content: center;
+            border-radius: 10px; background: rgba(255,255,255,0.04); color: #64748b;
+            font-size: 0.78rem; margin-bottom: 8px;
+        }
+        .adm-pop-row { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8rem; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .adm-pop-row:last-of-type { border-bottom: none; }
+        .adm-pop-row span:first-child { color: #94a3b8; }
+        .adm-pop-row span:last-child { color: #e5e7eb; font-weight: 600; text-align: right; }
+        .adm-pop-desc { margin-top: 6px; font-size: 0.78rem; color: #94a3b8; }
+
+        /* ===== Photo lightbox ===== */
+        #admPhotoLightbox {
+            position: fixed; inset: 0; z-index: 10001; display: none;
+            align-items: center; justify-content: center; padding: 24px;
+            background: rgba(5, 10, 8, 0.92); backdrop-filter: blur(8px); cursor: zoom-out;
+        }
+        #admPhotoLightbox.open { display: flex; animation: fadeIn 0.2s ease; }
+        #admPhotoLightbox img {
+            max-width: 95vw; max-height: 90vh; border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7); border: 1px solid var(--admin-border);
+        }
+        #admPhotoLightboxClose {
+            position: absolute; top: 16px; right: 20px; width: 44px; height: 44px;
+            border-radius: 50%; border: 1px solid var(--admin-border);
+            background: rgba(17,24,39,0.85); color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer;
+        }
+        #admPhotoLightboxClose:hover { border-color: var(--admin-accent); color: var(--admin-accent); }
+
         /* Stats sidebar */
         #admin-stat-panel {
             display: flex;
@@ -872,6 +910,12 @@
 
     <!-- Notification Toast -->
     <div id="adminToast" class="toast-notify"></div>
+
+    <!-- Admin map: photo lightbox -->
+    <div id="admPhotoLightbox" role="dialog" aria-label="Фото проблемы">
+        <button type="button" id="admPhotoLightboxClose" aria-label="Закрыть">×</button>
+        <img id="admPhotoLightboxImg" src="" alt="Фото проблемы">
+    </div>
 
     <div class="admin-container">
         <!-- Header -->
@@ -1383,6 +1427,50 @@
             return '#ef4444';
         }
 
+        function adminFormatDate(val) {
+            if (!val) return '—';
+            let d = new Date(val);
+            if (typeof val === 'string' && !val.includes('T') && !val.includes('Z')) d = new Date(val.replace(' ', 'T') + 'Z');
+            if (isNaN(d.getTime())) return '—';
+            return d.toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Info-only popup (status changes are handled in the Telegram group)
+        function adminBuildPopup(p) {
+            const statusLabel = p.status === 'resolved' ? '🟢 Решено' : p.status === 'in_progress' ? '🟡 В работе' : '🔴 Новая';
+            const author = p.username || p.user_id_name || 'Аноним';
+            const photo = p.photo_url
+                ? `<img class="adm-pop-photo" src="${adminEscape(p.photo_url)}" alt="Фото проблемы" onclick="adminOpenPhoto(this.src)" onerror="this.outerHTML='<div class=&quot;adm-pop-nophoto&quot;>Фото недоступно</div>'">`
+                : `<div class="adm-pop-nophoto">📷 Без фото</div>`;
+            const resolvedRow = p.status === 'resolved'
+                ? `<div class="adm-pop-row"><span>Решено</span><span>${adminFormatDate(p.resolved_at)}</span></div>`
+                : '';
+            const desc = (p.description || '').trim();
+            return `<div class="adm-pop">
+                <div class="adm-pop-title">#${adminEscape(p.id)} — ${adminEscape(p.category || '—')}</div>
+                ${photo}
+                <div class="adm-pop-row"><span>Автор</span><span>👤 ${adminEscape(author)}</span></div>
+                <div class="adm-pop-row"><span>Статус</span><span>${statusLabel}</span></div>
+                <div class="adm-pop-row"><span>Создано</span><span>${adminFormatDate(p.created_at || p.timestamp)}</span></div>
+                ${resolvedRow}
+                ${desc ? `<div class="adm-pop-desc">${adminEscape(desc.substring(0, 120))}${desc.length > 120 ? '…' : ''}</div>` : ''}
+            </div>`;
+        }
+
+        function adminOpenPhoto(src) {
+            document.getElementById('admPhotoLightboxImg').src = src;
+            document.getElementById('admPhotoLightbox').classList.add('open');
+        }
+
+        function adminClosePhoto() {
+            document.getElementById('admPhotoLightbox').classList.remove('open');
+            document.getElementById('admPhotoLightboxImg').src = '';
+        }
+
+        // Any click on the overlay (image or ×) closes it; Esc too
+        document.getElementById('admPhotoLightbox').addEventListener('click', adminClosePhoto);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') adminClosePhoto(); });
+
         function adminRenderMarkers(problems) {
             adminMarkers.forEach(m => adminMap.removeLayer(m));
             adminMarkers = [];
@@ -1399,8 +1487,7 @@
                     opacity: 0.9,
                     fillOpacity: 0.88
                 }).addTo(adminMap);
-                const statusLabel = p.status === 'resolved' ? '🟢 Решено' : p.status === 'in_progress' ? '🟡 В работе' : '🔴 Новая';
-                marker.bindPopup(`<div style="font-family:Inter,sans-serif;min-width:180px"><b>#${adminEscape(p.id)} — ${adminEscape(p.category || '—')}</b><br>${statusLabel}<br><small style="color:#94a3b8">${adminEscape((p.description||'').substring(0,80))}</small></div>`);
+                marker.bindPopup(adminBuildPopup(p), { maxWidth: 280 });
                 adminMarkers.push(marker);
             });
 
