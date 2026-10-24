@@ -630,12 +630,127 @@
         .admin-tab-panel { display: none; }
         .admin-tab-panel.active { display: block; }
 
-        /* Dark Map container */
-        #admin-map {
-            width: 100%;
-            height: 520px;
+        /* ===== Map tab layout: toolbar + (map | stats sidebar) ===== */
+        .admin-map-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: var(--admin-card-bg);
+            border: 1px solid var(--admin-border);
+            border-radius: 16px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+        }
+        .admin-seg {
+            display: inline-flex;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--admin-border);
+            border-radius: 12px;
+            padding: 3px;
+            gap: 2px;
+        }
+        .admin-seg .admin-map-filter {
+            background: transparent;
+            border: none;
+            color: var(--admin-text-sub);
+            border-radius: 9px;
+            padding: 7px 12px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s, color 0.2s;
+        }
+        .admin-seg .admin-map-filter:hover { color: var(--admin-text-main); }
+        .admin-seg .admin-map-filter.active {
+            background: rgba(46,204,113,0.18);
+            color: var(--admin-accent);
+        }
+        .admin-select-wrap { position: relative; }
+        .admin-select-wrap::after {
+            content: '▾';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--admin-text-sub);
+            pointer-events: none;
+            font-size: 0.8rem;
+        }
+        #adminCatSelect {
+            appearance: none;
+            -webkit-appearance: none;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--admin-border);
+            color: var(--admin-text-main);
+            border-radius: 12px;
+            padding: 9px 34px 9px 12px;
+            font-size: 0.84rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            min-width: 200px;
+        }
+        #adminCatSelect:focus { outline: none; border-color: var(--admin-accent); }
+        #adminCatSelect option { background: #111827; color: #e5e7eb; }
+        .admin-heat-btn {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--admin-border);
+            color: var(--admin-text-main);
+            border-radius: 12px;
+            padding: 9px 14px;
+            font-size: 0.84rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .admin-heat-btn:hover { border-color: #f97316; }
+        .admin-heat-btn.heat-active {
+            background: rgba(249,115,22,0.18);
+            border-color: #f97316;
+            color: #f97316;
+        }
+        .admin-live-badge {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+            color: var(--admin-text-sub);
+            white-space: nowrap;
+        }
+        .admin-live-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--admin-accent);
+            box-shadow: 0 0 0 0 rgba(46,204,113,0.6);
+            animation: adminPulse 2s infinite;
+        }
+        @keyframes adminPulse {
+            0% { box-shadow: 0 0 0 0 rgba(46,204,113,0.6); }
+            70% { box-shadow: 0 0 0 8px rgba(46,204,113,0); }
+            100% { box-shadow: 0 0 0 0 rgba(46,204,113,0); }
+        }
+
+        .admin-map-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 300px;
+            gap: 16px;
+            align-items: stretch;
+        }
+        .admin-map-wrapper {
+            position: relative;
+            border: 1px solid var(--admin-border);
             border-radius: 16px;
             overflow: hidden;
+            min-height: 560px;
+        }
+        #admin-map {
+            position: absolute;
+            inset: 0;
             background: #0b1120;
         }
         #admin-map .leaflet-popup-content-wrapper,
@@ -649,76 +764,54 @@
             color: #e5e7eb;
             border-color: var(--admin-border);
         }
-        #admin-map .leaflet-control-attribution {
-            background: rgba(11,17,32,0.75);
-            color: #64748b;
-        }
-        #admin-map .leaflet-control-attribution a { color: #94a3b8; }
-        .admin-live-badge {
-            margin-left: auto;
-            font-size: 0.78rem;
-            color: var(--admin-text-sub);
-        }
-        .admin-map-wrapper {
-            position: relative;
-            border: 1px solid var(--admin-border);
-            border-radius: 18px;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-        /* Admin map controls bar */
-        .admin-map-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 14px;
-        }
-        .admin-map-filter {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid var(--admin-border);
-            color: var(--admin-text-main);
-            border-radius: 10px;
-            padding: 7px 14px;
-            font-size: 0.84rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .admin-map-filter:hover, .admin-map-filter.active {
-            background: rgba(46,204,113,0.18);
-            border-color: var(--admin-accent);
-            color: var(--admin-accent);
-        }
-        .admin-map-filter.heat-active {
-            background: rgba(255, 100, 0, 0.18);
-            border-color: #f97316;
-            color: #f97316;
-        }
-        .admin-map-sep { color: var(--admin-border); font-size: 1.1rem; }
-        /* Admin stats panel inside map tab */
+
+        /* Stats sidebar */
         #admin-stat-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .admin-kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .admin-kpi {
             background: var(--admin-card-bg);
             border: 1px solid var(--admin-border);
-            border-radius: 16px;
-            padding: 20px 24px;
-            margin-bottom: 0;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 14px;
+            border-radius: 14px;
+            padding: 12px 14px;
         }
+        .admin-kpi-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--admin-text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .admin-kpi-val {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin-top: 4px;
+            line-height: 1.1;
+        }
+        .admin-kpi.kpi-new .admin-kpi-val { color: #f87171; }
+        .admin-kpi.kpi-prog .admin-kpi-val { color: #facc15; }
+        .admin-kpi.kpi-time .admin-kpi-val { color: var(--admin-accent); font-size: 1.25rem; }
         .admin-stat-block {
-            background: rgba(0,0,0,0.2);
-            border-radius: 12px;
-            padding: 14px;
+            background: var(--admin-card-bg);
+            border: 1px solid var(--admin-border);
+            border-radius: 14px;
+            padding: 12px 14px;
         }
         .admin-stat-block-title {
-            font-size: 0.78rem;
+            font-size: 0.72rem;
             font-weight: 700;
             color: var(--admin-accent);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
         .admin-stat-row {
             display: flex;
@@ -726,14 +819,36 @@
             align-items: center;
             font-size: 0.85rem;
             color: var(--admin-text-sub);
-            padding: 4px 0;
+            padding: 6px 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .admin-stat-row:last-child { border-bottom: none; }
         .admin-stat-num {
             font-weight: 700;
             color: #fff;
-            font-size: 1rem;
+            font-size: 0.95rem;
+        }
+        .admin-legend {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 0.78rem;
+            color: var(--admin-text-sub);
+        }
+        .admin-legend i {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+
+        @media (max-width: 1000px) {
+            .admin-map-layout { grid-template-columns: 1fr; }
+            .admin-map-wrapper { min-height: 420px; }
+            #admin-stat-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+            .admin-live-badge { margin-left: 0; }
         }
     </style>
 </head>
@@ -792,52 +907,75 @@
 
         <!-- ===== Map & Analytics Tab ===== -->
         <div id="adminPanelMap" class="admin-tab-panel">
-            <div class="admin-map-controls">
-                <button type="button" class="admin-map-filter active" data-status="all" onclick="adminMapFilter(this,'status')">Все</button>
-                <button type="button" class="admin-map-filter" data-status="new" onclick="adminMapFilter(this,'status')">🔴 Новые</button>
-                <button type="button" class="admin-map-filter" data-status="in_progress" onclick="adminMapFilter(this,'status')">🟡 В работе</button>
-                <button type="button" class="admin-map-filter" data-status="resolved" onclick="adminMapFilter(this,'status')">🟢 Решённые</button>
-                <span class="admin-map-sep">|</span>
-                <button type="button" class="admin-map-filter" id="adminHeatBtn" onclick="adminToggleHeat()">🔥 Зоны скопления</button>
-                <span class="admin-live-badge" id="adminLiveBadge">● Live</span>
+            <!-- Single compact toolbar -->
+            <div class="admin-map-toolbar">
+                <div class="admin-seg" role="group" aria-label="Фильтр по статусу">
+                    <button type="button" class="admin-map-filter active" data-status="all" onclick="adminMapFilter(this,'status')">Все</button>
+                    <button type="button" class="admin-map-filter" data-status="new" onclick="adminMapFilter(this,'status')">🔴 Новые</button>
+                    <button type="button" class="admin-map-filter" data-status="in_progress" onclick="adminMapFilter(this,'status')">🟡 В работе</button>
+                    <button type="button" class="admin-map-filter" data-status="resolved" onclick="adminMapFilter(this,'status')">🟢 Решённые</button>
+                </div>
+                <div class="admin-select-wrap">
+                    <select id="adminCatSelect" aria-label="Фильтр по категории" onchange="adminMapCategory(this)">
+                        <option value="all">📂 Все категории</option>
+                        <option value="Дороги">🚗 Дороги</option>
+                        <option value="Вода">💧 Вода</option>
+                        <option value="Электричество">⚡ Электрика / освещение</option>
+                        <option value="Газ">🔥 Газ</option>
+                        <option value="Пожар">🚨 Пожар</option>
+                        <option value="Дорожная авария">💥 ДТП</option>
+                        <option value="Опасные вещества">⚠️ Опасности</option>
+                        <option value="Мусор">🗑️ Мусор</option>
+                        <option value="Здания">🏢 Здания</option>
+                        <option value="Другое">✨ Другое</option>
+                    </select>
+                </div>
+                <button type="button" class="admin-heat-btn" id="adminHeatBtn" onclick="adminToggleHeat()">🔥 Зоны скопления</button>
+                <span class="admin-live-badge" id="adminLiveBadge">Live</span>
             </div>
-            <div class="admin-map-controls">
-                <button type="button" class="admin-map-filter active" data-cat="all" onclick="adminMapFilter(this,'cat')">Все категории</button>
-                <button type="button" class="admin-map-filter" data-cat="Дороги" onclick="adminMapFilter(this,'cat')">🚗 Дороги</button>
-                <button type="button" class="admin-map-filter" data-cat="Вода" onclick="adminMapFilter(this,'cat')">💧 Вода</button>
-                <button type="button" class="admin-map-filter" data-cat="Электричество" onclick="adminMapFilter(this,'cat')">⚡ Электрика / освещение</button>
-                <button type="button" class="admin-map-filter" data-cat="Газ" onclick="adminMapFilter(this,'cat')">🔥 Газ</button>
-                <button type="button" class="admin-map-filter" data-cat="Пожар" onclick="adminMapFilter(this,'cat')">🚨 Пожар</button>
-                <button type="button" class="admin-map-filter" data-cat="Дорожная авария" onclick="adminMapFilter(this,'cat')">💥 ДТП</button>
-                <button type="button" class="admin-map-filter" data-cat="Опасные вещества" onclick="adminMapFilter(this,'cat')">⚠️ Опасности</button>
-                <button type="button" class="admin-map-filter" data-cat="Мусор" onclick="adminMapFilter(this,'cat')">🗑️ Мусор</button>
-                <button type="button" class="admin-map-filter" data-cat="Здания" onclick="adminMapFilter(this,'cat')">🏢 Здания</button>
-                <button type="button" class="admin-map-filter" data-cat="Другое" onclick="adminMapFilter(this,'cat')">✨ Другое</button>
-            </div>
-            <div class="admin-map-wrapper">
-                <div id="admin-map"></div>
-            </div>
-            <div id="admin-stat-panel">
-                <div class="admin-stat-block">
-                    <div class="admin-stat-block-title">📊 Общее</div>
-                    <div class="admin-stat-row"><span>Всего на карте</span><span class="admin-stat-num" id="adm-total">0</span></div>
-                    <div class="admin-stat-row"><span>Среднее время решения</span><span class="admin-stat-num" id="adm-avg-time">—</span></div>
+
+            <!-- Map + stats sidebar -->
+            <div class="admin-map-layout">
+                <div class="admin-map-wrapper">
+                    <div id="admin-map"></div>
                 </div>
-                <div class="admin-stat-block">
-                    <div class="admin-stat-block-title">📅 Сегодня</div>
-                    <div class="admin-stat-row"><span>Новые / в работе</span><span class="admin-stat-num" id="adm-today-new">0</span></div>
-                    <div class="admin-stat-row"><span>Решено</span><span class="admin-stat-num" id="adm-today-res">0</span></div>
-                </div>
-                <div class="admin-stat-block">
-                    <div class="admin-stat-block-title">⏳ Статусы</div>
-                    <div class="admin-stat-row"><span>🔴 Новые</span><span class="admin-stat-num" id="adm-new-total">0</span></div>
-                    <div class="admin-stat-row"><span>🟡 В работе</span><span class="admin-stat-num" id="adm-inprog">0</span></div>
-                </div>
-                <div class="admin-stat-block">
-                    <div class="admin-stat-block-title">📈 Период (активные)</div>
-                    <div class="admin-stat-row"><span>За месяц</span><span class="admin-stat-num" id="adm-month-new">0</span></div>
-                    <div class="admin-stat-row"><span>За год</span><span class="admin-stat-num" id="adm-year-new">0</span></div>
-                </div>
+                <aside id="admin-stat-panel">
+                    <div class="admin-kpi-grid">
+                        <div class="admin-kpi">
+                            <div class="admin-kpi-label">Всего</div>
+                            <div class="admin-kpi-val" id="adm-total">0</div>
+                        </div>
+                        <div class="admin-kpi kpi-time">
+                            <div class="admin-kpi-label">Ср. решение</div>
+                            <div class="admin-kpi-val" id="adm-avg-time">—</div>
+                        </div>
+                        <div class="admin-kpi kpi-new">
+                            <div class="admin-kpi-label">🔴 Новые</div>
+                            <div class="admin-kpi-val" id="adm-new-total">0</div>
+                        </div>
+                        <div class="admin-kpi kpi-prog">
+                            <div class="admin-kpi-label">🟡 В работе</div>
+                            <div class="admin-kpi-val" id="adm-inprog">0</div>
+                        </div>
+                    </div>
+                    <div class="admin-stat-block">
+                        <div class="admin-stat-block-title">📅 Сегодня</div>
+                        <div class="admin-stat-row"><span>Новые / в работе</span><span class="admin-stat-num" id="adm-today-new">0</span></div>
+                        <div class="admin-stat-row"><span>Решено</span><span class="admin-stat-num" id="adm-today-res">0</span></div>
+                    </div>
+                    <div class="admin-stat-block">
+                        <div class="admin-stat-block-title">📈 Период (активные)</div>
+                        <div class="admin-stat-row"><span>За месяц</span><span class="admin-stat-num" id="adm-month-new">0</span></div>
+                        <div class="admin-stat-row"><span>За год</span><span class="admin-stat-num" id="adm-year-new">0</span></div>
+                    </div>
+                    <div class="admin-stat-block">
+                        <div class="admin-legend">
+                            <span><i style="background:#ef4444"></i>Новая</span>
+                            <span><i style="background:#f1c40f"></i>В работе</span>
+                            <span><i style="background:#2ecc71"></i>Решено</span>
+                        </div>
+                    </div>
+                </aside>
             </div>
         </div>
 
@@ -1228,11 +1366,10 @@
         function initAdminMap() {
             if (adminMap) return;
             adminMap = L.map('admin-map', { zoomControl: true }).setView([42.4683, 59.6009], 13);
-            // Dark basemap to match the Vaisperia Executive dark theme
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap &copy; CARTO',
-                subdomains: 'abcd',
-                maxZoom: 19
+            // Same Esri satellite imagery as the public map (public/app.js)
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+                maxZoom: 17
             }).addTo(adminMap);
         }
 
@@ -1288,6 +1425,11 @@
             btn.classList.add('active');
             if (type === 'status') adminFilterStatus = btn.dataset.status;
             else adminFilterCat = btn.dataset.cat;
+            adminApplyFilters();
+        }
+
+        function adminMapCategory(select) {
+            adminFilterCat = select.value || 'all';
             adminApplyFilters();
         }
 
