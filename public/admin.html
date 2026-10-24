@@ -636,7 +636,28 @@
             height: 520px;
             border-radius: 16px;
             overflow: hidden;
-            filter: brightness(0.85) saturate(0.7) hue-rotate(180deg) invert(1) hue-rotate(180deg);
+            background: #0b1120;
+        }
+        #admin-map .leaflet-popup-content-wrapper,
+        #admin-map .leaflet-popup-tip {
+            background: #111827;
+            color: #e5e7eb;
+            border: 1px solid var(--admin-border);
+        }
+        #admin-map .leaflet-control-zoom a {
+            background: #111827;
+            color: #e5e7eb;
+            border-color: var(--admin-border);
+        }
+        #admin-map .leaflet-control-attribution {
+            background: rgba(11,17,32,0.75);
+            color: #64748b;
+        }
+        #admin-map .leaflet-control-attribution a { color: #94a3b8; }
+        .admin-live-badge {
+            margin-left: auto;
+            font-size: 0.78rem;
+            color: var(--admin-text-sub);
         }
         .admin-map-wrapper {
             position: relative;
@@ -769,6 +790,59 @@
             <button class="admin-tab-btn" id="adminTabMap" onclick="switchAdminTab('map')">🗺️ Карта & Аналитика</button>
         </nav>
 
+        <!-- ===== Map & Analytics Tab ===== -->
+        <div id="adminPanelMap" class="admin-tab-panel">
+            <div class="admin-map-controls">
+                <button type="button" class="admin-map-filter active" data-status="all" onclick="adminMapFilter(this,'status')">Все</button>
+                <button type="button" class="admin-map-filter" data-status="new" onclick="adminMapFilter(this,'status')">🔴 Новые</button>
+                <button type="button" class="admin-map-filter" data-status="in_progress" onclick="adminMapFilter(this,'status')">🟡 В работе</button>
+                <button type="button" class="admin-map-filter" data-status="resolved" onclick="adminMapFilter(this,'status')">🟢 Решённые</button>
+                <span class="admin-map-sep">|</span>
+                <button type="button" class="admin-map-filter" id="adminHeatBtn" onclick="adminToggleHeat()">🔥 Зоны скопления</button>
+                <span class="admin-live-badge" id="adminLiveBadge">● Live</span>
+            </div>
+            <div class="admin-map-controls">
+                <button type="button" class="admin-map-filter active" data-cat="all" onclick="adminMapFilter(this,'cat')">Все категории</button>
+                <button type="button" class="admin-map-filter" data-cat="Дороги" onclick="adminMapFilter(this,'cat')">🚗 Дороги</button>
+                <button type="button" class="admin-map-filter" data-cat="Вода" onclick="adminMapFilter(this,'cat')">💧 Вода</button>
+                <button type="button" class="admin-map-filter" data-cat="Электричество" onclick="adminMapFilter(this,'cat')">⚡ Электрика / освещение</button>
+                <button type="button" class="admin-map-filter" data-cat="Газ" onclick="adminMapFilter(this,'cat')">🔥 Газ</button>
+                <button type="button" class="admin-map-filter" data-cat="Пожар" onclick="adminMapFilter(this,'cat')">🚨 Пожар</button>
+                <button type="button" class="admin-map-filter" data-cat="Дорожная авария" onclick="adminMapFilter(this,'cat')">💥 ДТП</button>
+                <button type="button" class="admin-map-filter" data-cat="Опасные вещества" onclick="adminMapFilter(this,'cat')">⚠️ Опасности</button>
+                <button type="button" class="admin-map-filter" data-cat="Мусор" onclick="adminMapFilter(this,'cat')">🗑️ Мусор</button>
+                <button type="button" class="admin-map-filter" data-cat="Здания" onclick="adminMapFilter(this,'cat')">🏢 Здания</button>
+                <button type="button" class="admin-map-filter" data-cat="Другое" onclick="adminMapFilter(this,'cat')">✨ Другое</button>
+            </div>
+            <div class="admin-map-wrapper">
+                <div id="admin-map"></div>
+            </div>
+            <div id="admin-stat-panel">
+                <div class="admin-stat-block">
+                    <div class="admin-stat-block-title">📊 Общее</div>
+                    <div class="admin-stat-row"><span>Всего на карте</span><span class="admin-stat-num" id="adm-total">0</span></div>
+                    <div class="admin-stat-row"><span>Среднее время решения</span><span class="admin-stat-num" id="adm-avg-time">—</span></div>
+                </div>
+                <div class="admin-stat-block">
+                    <div class="admin-stat-block-title">📅 Сегодня</div>
+                    <div class="admin-stat-row"><span>Новые / в работе</span><span class="admin-stat-num" id="adm-today-new">0</span></div>
+                    <div class="admin-stat-row"><span>Решено</span><span class="admin-stat-num" id="adm-today-res">0</span></div>
+                </div>
+                <div class="admin-stat-block">
+                    <div class="admin-stat-block-title">⏳ Статусы</div>
+                    <div class="admin-stat-row"><span>🔴 Новые</span><span class="admin-stat-num" id="adm-new-total">0</span></div>
+                    <div class="admin-stat-row"><span>🟡 В работе</span><span class="admin-stat-num" id="adm-inprog">0</span></div>
+                </div>
+                <div class="admin-stat-block">
+                    <div class="admin-stat-block-title">📈 Период (активные)</div>
+                    <div class="admin-stat-row"><span>За месяц</span><span class="admin-stat-num" id="adm-month-new">0</span></div>
+                    <div class="admin-stat-row"><span>За год</span><span class="admin-stat-num" id="adm-year-new">0</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Reports / Citizens Tab ===== -->
+        <div id="adminPanelReports" class="admin-tab-panel active">
         <!-- Analytics Cards -->
         <div class="analytics-grid">
             <div class="analytics-card">
@@ -835,6 +909,7 @@
                     </tbody>
                 </table>
             </div>
+        </div>
         </div>
     </div>
 
@@ -1132,10 +1207,16 @@
             if (tab === 'map') {
                 setTimeout(() => { if (adminMap) adminMap.invalidateSize(); }, 200);
                 loadAdminMapData();
+                // Real-time: refresh reports every 15s while the Map tab is open
+                if (!adminLiveTimer) adminLiveTimer = setInterval(loadAdminMapData, 15000);
+            } else if (adminLiveTimer) {
+                clearInterval(adminLiveTimer);
+                adminLiveTimer = null;
             }
         }
 
         // ===== Admin Map =====
+        let adminLiveTimer = null;
         let adminMap = null;
         let adminMarkers = [];
         let adminHeatLayer = null;
@@ -1147,10 +1228,16 @@
         function initAdminMap() {
             if (adminMap) return;
             adminMap = L.map('admin-map', { zoomControl: true }).setView([42.4683, 59.6009], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap',
+            // Dark basemap to match the Vaisperia Executive dark theme
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                subdomains: 'abcd',
                 maxZoom: 19
             }).addTo(adminMap);
+        }
+
+        function adminEscape(str) {
+            return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
 
         function getAdminMarkerColor(status) {
@@ -1176,7 +1263,7 @@
                     fillOpacity: 0.88
                 }).addTo(adminMap);
                 const statusLabel = p.status === 'resolved' ? '🟢 Решено' : p.status === 'in_progress' ? '🟡 В работе' : '🔴 Новая';
-                marker.bindPopup(`<div style="font-family:Inter,sans-serif;min-width:180px"><b>#${p.id} — ${p.category || '—'}</b><br>${statusLabel}<br><small style="color:#666">${(p.description||'').substring(0,80)}</small></div>`);
+                marker.bindPopup(`<div style="font-family:Inter,sans-serif;min-width:180px"><b>#${adminEscape(p.id)} — ${adminEscape(p.category || '—')}</b><br>${statusLabel}<br><small style="color:#94a3b8">${adminEscape((p.description||'').substring(0,80))}</small></div>`);
                 adminMarkers.push(marker);
             });
 
@@ -1233,8 +1320,8 @@
                 }
                 if (created >= monthStart && (p.status === 'new' || p.status === 'in_progress')) monthNew++;
                 if (created >= yearStart && (p.status === 'new' || p.status === 'in_progress')) yearNew++;
-                if (p.status === 'resolved' && p.resolved_at && p.created_at) {
-                    resolvedWithTime.push((new Date(p.resolved_at) - new Date(p.created_at)) / 3600000);
+                if (p.status === 'resolved' && p.resolved_at && (p.created_at || p.timestamp)) {
+                    resolvedWithTime.push((new Date(p.resolved_at) - new Date(p.created_at || p.timestamp)) / 3600000);
                 }
             });
 
@@ -1259,6 +1346,8 @@
                 .then(data => {
                     adminAllProblems = Array.isArray(data) ? data : (data.problems || []);
                     adminApplyFilters();
+                    const badge = document.getElementById('adminLiveBadge');
+                    if (badge) badge.textContent = '● Live · ' + new Date().toLocaleTimeString();
                 })
                 .catch(() => {
                     // fallback: try public endpoint
