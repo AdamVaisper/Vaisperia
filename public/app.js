@@ -910,19 +910,21 @@ document.addEventListener("DOMContentLoaded", () => {
         // Выбор координат вручную через карту отключён.
         // Координаты передаются только через GPS (navigator.geolocation).
 
-        // Кнопка статистики
+        // Кнопка статистики (скрыта на публичной карте — доступна только в Admin Portal)
         const statsBtn = document.createElement('button');
         statsBtn.type = 'button';
         statsBtn.id = 'stats-btn';
         statsBtn.textContent = 'Статистика';
+        statsBtn.style.display = 'none';
         mapElement.appendChild(statsBtn);
         L.DomEvent.disableClickPropagation(statsBtn);
 
-        // Кнопка тепловой карты
+        // Кнопка тепловой карты (скрыта на публичной карте — доступна только в Admin Portal)
         const hotzonesBtn = document.createElement('button');
         hotzonesBtn.type = 'button';
         hotzonesBtn.id = 'hotzones-btn';
         hotzonesBtn.textContent = window.t ? window.t('map_hotspots', '🔥 Зоны скопления') : '🔥 Зоны скопления';
+        hotzonesBtn.style.display = 'none';
         mapElement.appendChild(hotzonesBtn);
         L.DomEvent.disableClickPropagation(hotzonesBtn);
 

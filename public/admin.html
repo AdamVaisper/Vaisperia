@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
+    <!-- Leaflet CSS for Admin Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
     <style>
         :root {
             --admin-bg: #0b1310;
@@ -597,6 +599,121 @@
                 padding: 12px 16px;
             }
         }
+        /* ===== ADMIN MAP TAB ===== */
+        .admin-nav-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--admin-border);
+            padding-bottom: 0;
+            flex-wrap: wrap;
+        }
+        .admin-tab-btn {
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--admin-text-sub);
+            font-size: 0.92rem;
+            font-weight: 600;
+            padding: 10px 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: -1px;
+            border-radius: 0;
+            letter-spacing: 0.3px;
+        }
+        .admin-tab-btn:hover { color: var(--admin-accent); }
+        .admin-tab-btn.active {
+            color: var(--admin-accent);
+            border-bottom-color: var(--admin-accent);
+        }
+        .admin-tab-panel { display: none; }
+        .admin-tab-panel.active { display: block; }
+
+        /* Dark Map container */
+        #admin-map {
+            width: 100%;
+            height: 520px;
+            border-radius: 16px;
+            overflow: hidden;
+            filter: brightness(0.85) saturate(0.7) hue-rotate(180deg) invert(1) hue-rotate(180deg);
+        }
+        .admin-map-wrapper {
+            position: relative;
+            border: 1px solid var(--admin-border);
+            border-radius: 18px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        /* Admin map controls bar */
+        .admin-map-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .admin-map-filter {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--admin-border);
+            color: var(--admin-text-main);
+            border-radius: 10px;
+            padding: 7px 14px;
+            font-size: 0.84rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .admin-map-filter:hover, .admin-map-filter.active {
+            background: rgba(46,204,113,0.18);
+            border-color: var(--admin-accent);
+            color: var(--admin-accent);
+        }
+        .admin-map-filter.heat-active {
+            background: rgba(255, 100, 0, 0.18);
+            border-color: #f97316;
+            color: #f97316;
+        }
+        .admin-map-sep { color: var(--admin-border); font-size: 1.1rem; }
+        /* Admin stats panel inside map tab */
+        #admin-stat-panel {
+            background: var(--admin-card-bg);
+            border: 1px solid var(--admin-border);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+        }
+        .admin-stat-block {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 14px;
+        }
+        .admin-stat-block-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--admin-accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        .admin-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--admin-text-sub);
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .admin-stat-row:last-child { border-bottom: none; }
+        .admin-stat-num {
+            font-weight: 700;
+            color: #fff;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body class="admin-mode">
@@ -645,6 +762,12 @@
                 <button id="adminLogoutBtn" class="btn-admin-action btn-logout-danger">🚪 Выйти</button>
             </div>
         </header>
+
+        <!-- Admin Navigation Tabs -->
+        <nav class="admin-nav-tabs">
+            <button class="admin-tab-btn active" id="adminTabReports" onclick="switchAdminTab('reports')">📋 Граждане & Реестр</button>
+            <button class="admin-tab-btn" id="adminTabMap" onclick="switchAdminTab('map')">🗺️ Карта & Аналитика</button>
+        </nav>
 
         <!-- Analytics Cards -->
         <div class="analytics-grid">
@@ -995,6 +1118,159 @@
 
             loadUsersData();
         });
+    </script>
+    <!-- Leaflet JS for Admin Map -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script>
+        // ===== Admin Tab Switcher =====
+        function switchAdminTab(tab) {
+            document.getElementById('adminPanelReports').classList.toggle('active', tab === 'reports');
+            document.getElementById('adminPanelMap').classList.toggle('active', tab === 'map');
+            document.getElementById('adminTabReports').classList.toggle('active', tab === 'reports');
+            document.getElementById('adminTabMap').classList.toggle('active', tab === 'map');
+            if (tab === 'map') {
+                setTimeout(() => { if (adminMap) adminMap.invalidateSize(); }, 200);
+                loadAdminMapData();
+            }
+        }
+
+        // ===== Admin Map =====
+        let adminMap = null;
+        let adminMarkers = [];
+        let adminHeatLayer = null;
+        let adminAllProblems = [];
+        let adminFilterStatus = 'all';
+        let adminFilterCat = 'all';
+        let adminHeatActive = false;
+
+        function initAdminMap() {
+            if (adminMap) return;
+            adminMap = L.map('admin-map', { zoomControl: true }).setView([42.4683, 59.6009], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap',
+                maxZoom: 19
+            }).addTo(adminMap);
+        }
+
+        function getAdminMarkerColor(status) {
+            if (status === 'resolved') return '#2ecc71';
+            if (status === 'in_progress') return '#f1c40f';
+            return '#ef4444';
+        }
+
+        function adminRenderMarkers(problems) {
+            adminMarkers.forEach(m => adminMap.removeLayer(m));
+            adminMarkers = [];
+            problems.forEach(p => {
+                const lat = parseFloat(p.latitude);
+                const lng = parseFloat(p.longitude);
+                if (isNaN(lat) || isNaN(lng)) return;
+                const color = getAdminMarkerColor(p.status);
+                const marker = L.circleMarker([lat, lng], {
+                    radius: 9,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 0.9,
+                    fillOpacity: 0.88
+                }).addTo(adminMap);
+                const statusLabel = p.status === 'resolved' ? '🟢 Решено' : p.status === 'in_progress' ? '🟡 В работе' : '🔴 Новая';
+                marker.bindPopup(`<div style="font-family:Inter,sans-serif;min-width:180px"><b>#${p.id} — ${p.category || '—'}</b><br>${statusLabel}<br><small style="color:#666">${(p.description||'').substring(0,80)}</small></div>`);
+                adminMarkers.push(marker);
+            });
+
+            // Update heatmap
+            const heatPoints = problems.map(p => [parseFloat(p.latitude), parseFloat(p.longitude), 0.8]).filter(pt => !isNaN(pt[0]));
+            if (adminHeatLayer) adminMap.removeLayer(adminHeatLayer);
+            adminHeatLayer = L.heatLayer(heatPoints, { radius: 28, blur: 20, maxZoom: 16, gradient: {0.3:'#38bdf8', 0.6:'#f1c40f', 1:'#ef4444'} });
+            if (adminHeatActive) adminHeatLayer.addTo(adminMap);
+        }
+
+        function adminApplyFilters() {
+            let filtered = adminAllProblems;
+            if (adminFilterStatus !== 'all') filtered = filtered.filter(p => p.status === adminFilterStatus);
+            if (adminFilterCat !== 'all') filtered = filtered.filter(p => p.category === adminFilterCat);
+            adminRenderMarkers(filtered);
+            adminUpdateStats(filtered);
+        }
+
+        function adminMapFilter(btn, type) {
+            const group = document.querySelectorAll(`.admin-map-filter[data-${type}]`);
+            group.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (type === 'status') adminFilterStatus = btn.dataset.status;
+            else adminFilterCat = btn.dataset.cat;
+            adminApplyFilters();
+        }
+
+        function adminToggleHeat() {
+            adminHeatActive = !adminHeatActive;
+            const btn = document.getElementById('adminHeatBtn');
+            btn.classList.toggle('heat-active', adminHeatActive);
+            if (adminHeatLayer) {
+                if (adminHeatActive) adminHeatLayer.addTo(adminMap);
+                else adminMap.removeLayer(adminHeatLayer);
+            }
+        }
+
+        function adminUpdateStats(problems) {
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const yearStart = new Date(now.getFullYear(), 0, 1);
+
+            let todayNew = 0, todayRes = 0, inProg = 0, newTotal = 0, monthNew = 0, yearNew = 0;
+            let resolvedWithTime = [];
+
+            problems.forEach(p => {
+                const created = new Date(p.created_at || p.timestamp || 0);
+                if (p.status === 'new') newTotal++;
+                if (p.status === 'in_progress') inProg++;
+                if (created >= todayStart) {
+                    if (p.status === 'new' || p.status === 'in_progress') todayNew++;
+                    if (p.status === 'resolved') todayRes++;
+                }
+                if (created >= monthStart && (p.status === 'new' || p.status === 'in_progress')) monthNew++;
+                if (created >= yearStart && (p.status === 'new' || p.status === 'in_progress')) yearNew++;
+                if (p.status === 'resolved' && p.resolved_at && p.created_at) {
+                    resolvedWithTime.push((new Date(p.resolved_at) - new Date(p.created_at)) / 3600000);
+                }
+            });
+
+            const avgH = resolvedWithTime.length ? (resolvedWithTime.reduce((a,b)=>a+b,0)/resolvedWithTime.length) : 0;
+            const avgStr = avgH >= 24 ? `${(avgH/24).toFixed(1)} дн` : (avgH >= 1 ? `${avgH.toFixed(1)} ч` : `${(avgH*60).toFixed(0)} мин`);
+
+            document.getElementById('adm-avg-time').textContent = resolvedWithTime.length ? avgStr : '—';
+            document.getElementById('adm-total').textContent = problems.length;
+            document.getElementById('adm-today-new').textContent = todayNew;
+            document.getElementById('adm-today-res').textContent = todayRes;
+            document.getElementById('adm-inprog').textContent = inProg;
+            document.getElementById('adm-new-total').textContent = newTotal;
+            document.getElementById('adm-month-new').textContent = monthNew;
+            document.getElementById('adm-year-new').textContent = yearNew;
+        }
+
+        function loadAdminMapData() {
+            initAdminMap();
+            const token = localStorage.getItem('vaisperia_admin_pass');
+            fetch('/api/problems', { headers: token ? { 'x-admin-password': token } : {} })
+                .then(r => r.ok ? r.json() : Promise.reject())
+                .then(data => {
+                    adminAllProblems = Array.isArray(data) ? data : (data.problems || []);
+                    adminApplyFilters();
+                })
+                .catch(() => {
+                    // fallback: try public endpoint
+                    fetch('/api/problems')
+                        .then(r => r.json())
+                        .then(data => {
+                            adminAllProblems = Array.isArray(data) ? data : (data.problems || []);
+                            adminApplyFilters();
+                        })
+                        .catch(() => console.warn('Admin map: could not load problems'));
+                });
+        }
     </script>
 </body>
 </html>
