@@ -33,6 +33,7 @@
             toggle_to_login: "Войти через...",
             toggle_to_register: "Зарегистрироваться",
             user_not_found: "Пользователь с таким никнеймом или Gmail не найден!",
+            liveness_required: "⚠️ Моргните или слегка пошевелитесь перед камерой, чтобы подтвердить присутствие живого человека.",
             
             nav_home: "Главная",
             nav_map: "Карта",
@@ -267,6 +268,7 @@
             toggle_to_login: "Kirish...",
             toggle_to_register: "Ro'yxatdan o'tish",
             user_not_found: "Bunday nikneym yoki Gmail ga ega foydalanuvchi topilmadi!",
+            liveness_required: "⚠️ Kamera oldida ko'z qirpib yoki biroz harakatlaning — tirikligingizni tasdiqlash kerak.",
             
             nav_home: "Bosh sahifa",
             nav_map: "Xarita",
@@ -500,6 +502,7 @@
             toggle_to_login: "Login via...",
             toggle_to_register: "Register",
             user_not_found: "User with this username or Gmail not found!",
+            liveness_required: "⚠️ Please blink or move slightly in front of the camera to confirm you are a live person.",
             
             nav_home: "Home",
             nav_map: "Map",

@@ -17,6 +17,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const video = document.getElementById('bio-webcam-video');
     let mediaStream = null;
 
+    // --- Liveness Detection state ---
+    let livenessDetected = false;
+    let livenessEventCount = 0;
+    let livenessAnimFrame = null;
+    let livenessPrevFrame = null;
+    const LIVENESS_REQUIRED_EVENTS = 2;   // minimum motion events required
+    const LIVENESS_MOTION_THRESHOLD = 12; // per-pixel diff threshold (0-255)
+    const LIVENESS_MOTION_RATIO = 0.04;   // fraction of pixels that must differ
+
     const profileLogoutBtn = document.getElementById('profileLogoutBtn');
     const btnGuestLogin = document.getElementById('btnGuestLogin');
 
@@ -177,11 +186,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function startWebcam() {
+        // Reset liveness state on every new webcam session
+        livenessDetected = false;
+        livenessEventCount = 0;
+        livenessPrevFrame = null;
+        if (livenessAnimFrame) { cancelAnimationFrame(livenessAnimFrame); livenessAnimFrame = null; }
+
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
                 .then(stream => {
                     mediaStream = stream;
-                    if (video) video.srcObject = stream;
+                    if (video) {
+                        video.srcObject = stream;
+                        video.addEventListener('playing', startLivenessLoop, { once: true });
+                    }
                 })
                 .catch(err => {
                     console.warn('Webcam stream unavailable:', err);
@@ -189,7 +207,54 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Liveness loop: compares consecutive frames for significant pixel-level motion
+    function startLivenessLoop() {
+        const lCanvas = document.createElement('canvas');
+        lCanvas.width = 80;
+        lCanvas.height = 60;
+        const lCtx = lCanvas.getContext('2d');
+        const totalPixels = lCanvas.width * lCanvas.height;
+
+        function checkFrame() {
+            if (!mediaStream || !video || video.readyState < 2) {
+                livenessAnimFrame = requestAnimationFrame(checkFrame);
+                return;
+            }
+            lCtx.drawImage(video, 0, 0, lCanvas.width, lCanvas.height);
+            const frame = lCtx.getImageData(0, 0, lCanvas.width, lCanvas.height).data;
+
+            if (livenessPrevFrame) {
+                let changedPixels = 0;
+                for (let i = 0; i < frame.length; i += 4) {
+                    const dr = Math.abs(frame[i]     - livenessPrevFrame[i]);
+                    const dg = Math.abs(frame[i + 1] - livenessPrevFrame[i + 1]);
+                    const db = Math.abs(frame[i + 2] - livenessPrevFrame[i + 2]);
+                    const brightness = (dr * 0.299 + dg * 0.587 + db * 0.114);
+                    if (brightness > LIVENESS_MOTION_THRESHOLD) changedPixels++;
+                }
+                if (changedPixels / totalPixels > LIVENESS_MOTION_RATIO) {
+                    livenessEventCount++;
+                    if (livenessEventCount >= LIVENESS_REQUIRED_EVENTS) {
+                        livenessDetected = true;
+                        // Show subtle indicator if available
+                        const ind = document.getElementById('liveness-indicator');
+                        if (ind) { ind.textContent = '✔'; ind.style.color = '#10b981'; }
+                        cancelAnimationFrame(livenessAnimFrame);
+                        livenessAnimFrame = null;
+                        return;
+                    }
+                }
+            }
+
+            livenessPrevFrame = new Uint8ClampedArray(frame);
+            livenessAnimFrame = requestAnimationFrame(checkFrame);
+        }
+        livenessAnimFrame = requestAnimationFrame(checkFrame);
+    }
+
     function stopWebcam() {
+        if (livenessAnimFrame) { cancelAnimationFrame(livenessAnimFrame); livenessAnimFrame = null; }
+        livenessPrevFrame = null;
         if (mediaStream) {
             mediaStream.getTracks().forEach(track => track.stop());
             mediaStream = null;
@@ -361,6 +426,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // Сканирование биометрии и динамическая обработка (POST /api/login или /api/register)
     if (btnSubmitBiometrics) {
         btnSubmitBiometrics.addEventListener('click', async () => {
+            // --- Liveness guard: block static photo attacks ---
+            if (!livenessDetected) {
+                showBioError('liveness_required');
+                return;
+            }
             hideBioError();
             const usernameInput = document.getElementById('username');
             const emailInput = document.getElementById('email');
