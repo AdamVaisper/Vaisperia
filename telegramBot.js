@@ -59,7 +59,7 @@ function formatTashkentDate(dateVal) {
 function buildMessageCaption(report, statusSuffix = '') {
   const lat = Number(report.latitude);
   const lng = Number(report.longitude);
-  const mapLink = `https://yandex.com/maps/?pt=${lng},${lat}&z=18&l=map`;
+  const mapLink = `https://maps.google.com/?q=${lat},${lng}`;
   const dateStr = formatTashkentDate(report.timestamp || report.created_at);
   const cat = report.category || 'Другое';
 
