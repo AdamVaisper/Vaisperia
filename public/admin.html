@@ -888,6 +888,177 @@
             #admin-stat-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
             .admin-live-badge { margin-left: 0; }
         }
+
+        /* ===== Visual charts (synced with the existing map filters) ===== */
+        .adm-charts { margin-top: 22px; }
+        .adm-charts-head {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+        }
+        .adm-charts-title {
+            font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 800;
+            color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;
+        }
+        .adm-charts-filter {
+            font-size: 0.78rem; font-weight: 600; color: var(--admin-accent);
+            background: rgba(46,204,113,0.1); border: 1px solid var(--admin-border);
+            padding: 5px 12px; border-radius: 999px;
+        }
+        .adm-charts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+        .adm-chart-card {
+            background: linear-gradient(160deg, rgba(23,46,36,0.92), rgba(12,24,19,0.92));
+            border: 1px solid var(--admin-border); border-radius: 18px; padding: 16px 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3); min-width: 0;
+            transition: border-color 0.2s, transform 0.2s; animation: fadeIn 0.4s ease;
+        }
+        .adm-chart-card:hover { border-color: var(--admin-border-hover); transform: translateY(-2px); }
+        .adm-chart-wide { grid-column: span 2; }
+        .adm-chart-head {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
+        }
+        .adm-chart-title {
+            font-size: 0.78rem; font-weight: 700; color: var(--admin-text-main);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .adm-chart-sub { font-size: 0.74rem; color: var(--admin-text-sub); margin-top: 3px; }
+        .adm-chart-empty {
+            height: 160px; display: flex; align-items: center; justify-content: center;
+            color: #64748b; font-size: 0.84rem; text-align: center; padding: 0 12px;
+            border: 1px dashed rgba(255,255,255,0.08); border-radius: 12px;
+        }
+        .adm-mini-legend { display: flex; gap: 10px; font-size: 0.72rem; color: var(--admin-text-sub); flex-wrap: wrap; }
+        .adm-mini-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+        /* Donut */
+        .adm-donut-wrap { display: flex; align-items: center; gap: 18px; }
+        #admChartStatus { width: 150px; height: 150px; flex-shrink: 0; overflow: visible; }
+        .adm-donut-seg {
+            transition: stroke-dasharray 0.7s cubic-bezier(.4,0,.2,1), stroke-dashoffset 0.7s cubic-bezier(.4,0,.2,1), stroke-width 0.2s;
+            cursor: pointer;
+        }
+        .adm-donut-seg:hover { stroke-width: 23; }
+        .adm-donut-total { font-family: 'Outfit', sans-serif; font-size: 30px; font-weight: 800; fill: #fff; }
+        .adm-donut-cap { font-size: 9px; fill: #94a3b8; letter-spacing: 0.6px; text-transform: uppercase; }
+        .adm-legend-list { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .adm-legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--admin-text-sub); }
+        .adm-legend-item i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+        .adm-legend-item b { margin-left: auto; color: #fff; }
+        .adm-legend-item small { color: var(--admin-text-sub); width: 36px; text-align: right; }
+        .adm-legend-foot {
+            font-size: 0.76rem; color: var(--admin-text-sub); padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .adm-legend-foot + .adm-legend-foot { border-top: none; padding-top: 0; }
+        .adm-legend-foot b { color: var(--admin-accent); }
+
+        /* Range switch */
+        .adm-range-seg {
+            display: inline-flex; background: rgba(0,0,0,0.25); border: 1px solid var(--admin-border);
+            border-radius: 10px; padding: 2px; gap: 2px;
+        }
+        .adm-range-btn {
+            background: transparent; border: none; color: var(--admin-text-sub); font-size: 0.74rem;
+            font-weight: 600; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+            font-family: inherit; transition: background 0.2s, color 0.2s;
+        }
+        .adm-range-btn:hover { color: var(--admin-text-main); }
+        .adm-range-btn.active { background: rgba(46,204,113,0.18); color: var(--admin-accent); }
+
+        /* Column charts */
+        .adm-cols {
+            position: relative; height: 170px; display: flex; gap: 4px; align-items: flex-end;
+            margin-left: 26px; border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .adm-cols-grid { position: absolute; inset: 0; pointer-events: none; }
+        .adm-cols-grid div { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(255,255,255,0.07); }
+        .adm-cols-grid span {
+            position: absolute; left: -28px; width: 22px; text-align: right;
+            transform: translateY(-50%); font-size: 0.64rem; color: #64748b;
+        }
+        .adm-col {
+            flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center;
+            min-width: 0; cursor: pointer; border-radius: 6px 6px 0 0; position: relative; z-index: 1;
+            transition: background 0.15s;
+        }
+        .adm-col:hover { background: rgba(255,255,255,0.045); }
+        .adm-col-stack {
+            width: 72%; max-width: 30px; display: flex; flex-direction: column-reverse;
+            border-radius: 5px 5px 2px 2px; overflow: hidden; transform-origin: bottom;
+            animation: admGrow 0.6s cubic-bezier(.4,0,.2,1) both;
+            box-shadow: 0 0 14px rgba(46,204,113,0.12);
+        }
+        .adm-col-stack > div { flex-basis: 0; min-height: 0; }
+        .adm-col-labels { display: flex; gap: 4px; margin: 6px 0 0 26px; }
+        .adm-col-labels span {
+            flex: 1; min-width: 0; text-align: center; font-size: 0.63rem; color: #64748b;
+            white-space: nowrap; overflow: visible;
+        }
+        @keyframes admGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+        /* Horizontal category bars */
+        .adm-hbars { display: flex; flex-direction: column; gap: 10px; max-height: 232px; overflow-y: auto; padding-right: 4px; }
+        .adm-hbar-row { cursor: pointer; border-radius: 8px; padding: 3px 4px; transition: background 0.15s; }
+        .adm-hbar-row:hover { background: rgba(255,255,255,0.04); }
+        .adm-hbar-top { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8rem; color: var(--admin-text-main); margin-bottom: 4px; }
+        .adm-hbar-top span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .adm-hbar-top b { color: #fff; }
+        .adm-hbar-top small { color: var(--admin-text-sub); font-weight: 500; }
+        .adm-hbar-track { height: 8px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; }
+        .adm-hbar-fill {
+            height: 100%; display: flex; border-radius: 999px; overflow: hidden; background: #64748b;
+            transform-origin: left; animation: admGrowX 0.6s cubic-bezier(.4,0,.2,1) both;
+        }
+        .adm-hbar-fill > div { flex-basis: 0; height: 100%; }
+        .adm-hbar-row.is-active { background: rgba(46,204,113,0.1); }
+        .adm-hbar-row.is-active .adm-hbar-top span:first-child { color: var(--admin-accent); font-weight: 700; }
+        @keyframes admGrowX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+        /* Chart tooltip */
+        #admChartTip {
+            position: fixed; z-index: 10002; pointer-events: none; left: 0; top: 0;
+            background: #0f172a; border: 1px solid var(--admin-border-hover); color: #e5e7eb;
+            font-size: 0.76rem; line-height: 1.45; padding: 7px 10px; border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); white-space: pre-line; max-width: 260px;
+            opacity: 0; transform: translateY(4px); transition: opacity 0.12s, transform 0.12s;
+        }
+        #admChartTip.show { opacity: 1; transform: translateY(0); }
+
+        /* ===== Report export ===== */
+        .adm-export-wrap { position: relative; z-index: 1500; }
+        .admin-export-btn {
+            background: linear-gradient(135deg, #10b981, #059669); border: none; color: #fff;
+            border-radius: 12px; padding: 9px 16px; font-size: 0.84rem; font-weight: 700;
+            cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px;
+            box-shadow: 0 4px 14px rgba(16,185,129,0.35); transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .admin-export-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.5); }
+        .adm-export-menu {
+            position: absolute; top: calc(100% + 8px); left: 0; min-width: 260px;
+            background: #0f1d17; border: 1px solid var(--admin-border-hover); border-radius: 14px;
+            padding: 6px; box-shadow: 0 16px 40px rgba(0,0,0,0.6); display: none;
+        }
+        .adm-export-menu.open { display: block; animation: fadeIn 0.18s ease; }
+        .adm-export-item {
+            width: 100%; display: flex; gap: 10px; align-items: flex-start; background: none; border: none;
+            color: var(--admin-text-main); text-align: left; padding: 10px 12px; border-radius: 10px;
+            cursor: pointer; font-family: inherit; transition: background 0.15s;
+        }
+        .adm-export-item:hover { background: rgba(46,204,113,0.12); }
+        .adm-export-item .ico { font-size: 1.25rem; line-height: 1.2; }
+        .adm-export-item b { display: block; font-size: 0.86rem; }
+        .adm-export-item small { color: var(--admin-text-sub); font-size: 0.74rem; }
+
+        @media (max-width: 1000px) {
+            .adm-charts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 640px) {
+            .adm-charts-grid { grid-template-columns: 1fr; }
+            .adm-chart-wide { grid-column: auto; }
+            .adm-donut-wrap { flex-direction: column; align-items: stretch; }
+            #admChartStatus { margin: 0 auto; }
+            .adm-export-menu { left: auto; right: 0; }
+        }
     </style>
 </head>
 <body class="admin-mode">
@@ -975,6 +1146,19 @@
                     </select>
                 </div>
                 <button type="button" class="admin-heat-btn" id="adminHeatBtn" onclick="adminToggleHeat()">🔥 Зоны скопления</button>
+                <div class="adm-export-wrap" id="adminExportWrap">
+                    <button type="button" class="admin-export-btn" id="adminExportBtn" aria-haspopup="true" aria-expanded="false" onclick="adminToggleExportMenu(event)">📥 Экспорт отчета</button>
+                    <div class="adm-export-menu" id="adminExportMenu" role="menu">
+                        <button type="button" class="adm-export-item" id="adminExportPdfBtn" role="menuitem" onclick="adminExportPdf()">
+                            <span class="ico">📄</span>
+                            <span><b>PDF-сводка</b><small>KPI, графики и реестр — для презентации</small></span>
+                        </button>
+                        <button type="button" class="adm-export-item" id="adminExportCsvBtn" role="menuitem" onclick="adminExportCsv()">
+                            <span class="ico">📊</span>
+                            <span><b>Excel (CSV)</b><small>Сводка + полная таблица обращений</small></span>
+                        </button>
+                    </div>
+                </div>
                 <span class="admin-live-badge" id="adminLiveBadge">Live</span>
             </div>
 
@@ -1021,6 +1205,69 @@
                     </div>
                 </aside>
             </div>
+
+            <!-- Visual charts: fed by adminApplyFilters() with the already-filtered list -->
+            <section class="adm-charts" id="admCharts" aria-label="Графики аналитики">
+                <div class="adm-charts-head">
+                    <h2 class="adm-charts-title">📊 Визуальная аналитика</h2>
+                    <span class="adm-charts-filter" id="admChartsFilterLabel">📂 Все категории · Все статусы</span>
+                </div>
+                <div class="adm-charts-grid">
+                    <div class="adm-chart-card">
+                        <div class="adm-chart-head"><span class="adm-chart-title">Распределение по статусам</span></div>
+                        <div class="adm-donut-wrap">
+                            <svg id="admChartStatus" viewBox="0 0 160 160" role="img" aria-label="Диаграмма статусов"></svg>
+                            <div class="adm-legend-list" id="admChartStatusLegend"></div>
+                        </div>
+                    </div>
+                    <div class="adm-chart-card adm-chart-wide">
+                        <div class="adm-chart-head">
+                            <div>
+                                <div class="adm-chart-title">Динамика обращений</div>
+                                <div class="adm-chart-sub" id="admChartTimelineSub"></div>
+                            </div>
+                            <div class="adm-mini-legend">
+                                <span><i style="background:#ef4444"></i>Новые</span>
+                                <span><i style="background:#f1c40f"></i>В работе</span>
+                                <span><i style="background:#2ecc71"></i>Решено</span>
+                            </div>
+                            <div class="adm-range-seg" role="group" aria-label="Период графика">
+                                <button type="button" class="adm-range-btn active" id="admRange14d" data-range="14d" onclick="adminChartRange(this)">14 дней</button>
+                                <button type="button" class="adm-range-btn" id="admRange30d" data-range="30d" onclick="adminChartRange(this)">30 дней</button>
+                                <button type="button" class="adm-range-btn" id="admRange12m" data-range="12m" onclick="adminChartRange(this)">12 мес</button>
+                            </div>
+                        </div>
+                        <div id="admChartTimeline"></div>
+                    </div>
+                    <div class="adm-chart-card">
+                        <div class="adm-chart-head">
+                            <div>
+                                <div class="adm-chart-title">По категориям</div>
+                                <div class="adm-chart-sub">Клик по строке — фильтр по категории</div>
+                            </div>
+                        </div>
+                        <div id="admChartCats"></div>
+                    </div>
+                    <div class="adm-chart-card">
+                        <div class="adm-chart-head">
+                            <div>
+                                <div class="adm-chart-title">Время решения</div>
+                                <div class="adm-chart-sub" id="admChartResSub"></div>
+                            </div>
+                        </div>
+                        <div id="admChartRes"></div>
+                    </div>
+                    <div class="adm-chart-card">
+                        <div class="adm-chart-head">
+                            <div>
+                                <div class="adm-chart-title">Активность по часам</div>
+                                <div class="adm-chart-sub" id="admChartHoursSub"></div>
+                            </div>
+                        </div>
+                        <div id="admChartHours"></div>
+                    </div>
+                </div>
+            </section>
         </div>
 
         <!-- ===== Reports / Citizens Tab ===== -->
@@ -1504,6 +1751,10 @@
             if (adminFilterCat !== 'all') filtered = filtered.filter(p => p.category === adminFilterCat);
             adminRenderMarkers(filtered);
             adminUpdateStats(filtered);
+            // Charts are read-only consumers of the filtered list; guarded so they can never break filtering
+            if (typeof adminRenderCharts === 'function') {
+                try { adminRenderCharts(filtered); } catch (e) { console.warn('Admin charts:', e); }
+            }
         }
 
         function adminMapFilter(btn, type) {
@@ -1589,6 +1840,621 @@
                         .catch(() => console.warn('Admin map: could not load problems'));
                 });
         }
+    </script>
+    <script>
+        // ===== Visual charts + report export =====
+        // Read-only add-on: consumes the list already filtered by adminApplyFilters()
+        // and never mutates adminAllProblems / adminFilterStatus / adminFilterCat.
+        (function () {
+            const KEYS = ['new', 'in_progress', 'resolved'];
+            const COL = { new: '#ef4444', in_progress: '#f1c40f', resolved: '#2ecc71' };
+            const LBL = { new: 'Новые', in_progress: 'В работе', resolved: 'Решено' };
+            const ICO = { new: '🔴', in_progress: '🟡', resolved: '🟢' };
+            const STATUS_FILTER_LBL = { all: 'Все статусы', new: '🔴 Новые', in_progress: '🟡 В работе', resolved: '🟢 Решённые' };
+            const MONTHS = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+            const RES_BUCKETS = [
+                { l: '< 1 ч', max: 1, c: '#6ee7b7' }, { l: '1–6 ч', max: 6, c: '#34d399' },
+                { l: '6–24 ч', max: 24, c: '#2ecc71' }, { l: '1–3 дн', max: 72, c: '#16a34a' },
+                { l: '> 3 дн', max: Infinity, c: '#15803d' }
+            ];
+            const fmtParts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Tashkent', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23'
+            });
+
+            let lastList = null;
+            let lastSig = '';
+            let range = '14d';
+
+            // ---------- helpers ----------
+            function esc(s) {
+                return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            }
+            function parseDate(val) {
+                if (!val) return null;
+                let d = new Date(val);
+                if (typeof val === 'string' && !val.includes('T') && !val.includes('Z')) d = new Date(val.replace(' ', 'T') + 'Z');
+                return isNaN(d.getTime()) ? null : d;
+            }
+            function createdOf(p) { return parseDate(p.created_at || p.timestamp); }
+            function parts(d) {
+                const o = {};
+                fmtParts.formatToParts(d).forEach(x => { o[x.type] = x.value; });
+                o.hourNum = parseInt(o.hour, 10) % 24;
+                return o;
+            }
+            function st(p) { return p.status === 'resolved' ? 'resolved' : p.status === 'in_progress' ? 'in_progress' : 'new'; }
+            function pct(a, t) { return t ? (a / t * 100).toFixed(1).replace(/\.0$/, '') + '%' : '0%'; }
+            function fmtDur(h) {
+                if (h == null || !isFinite(h)) return '—';
+                return h >= 24 ? `${(h / 24).toFixed(1)} дн` : h >= 1 ? `${h.toFixed(1)} ч` : `${Math.max(0, h * 60).toFixed(0)} мин`;
+            }
+            function resHours(p) {
+                if (st(p) !== 'resolved' || !p.resolved_at) return null;
+                const c = createdOf(p), r = parseDate(p.resolved_at);
+                if (!c || !r) return null;
+                return Math.max(0, (r - c) / 3600000);
+            }
+            function niceMax(m) {
+                if (m <= 4) return 4;
+                const pow = Math.pow(10, Math.floor(Math.log10(m)));
+                const n = m / pow;
+                return (n <= 2 ? 2 : n <= 4 ? 4 : n <= 6 ? 6 : n <= 8 ? 8 : 10) * pow;
+            }
+            function countStatus(list) {
+                const c = { new: 0, in_progress: 0, resolved: 0 };
+                list.forEach(p => { c[st(p)]++; });
+                return c;
+            }
+            function catSelect() { return document.getElementById('adminCatSelect'); }
+            function catLabel(cat) {
+                const sel = catSelect();
+                const opt = sel && Array.from(sel.options).find(o => o.value === cat);
+                return opt ? opt.text : `📌 ${cat}`;
+            }
+            function currentFilterText() {
+                const sel = catSelect();
+                const cat = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : '📂 Все категории';
+                const status = STATUS_FILTER_LBL[adminFilterStatus] || 'Все статусы';
+                return { cat, status };
+            }
+            function groupCats(list) {
+                const map = {};
+                list.forEach(p => {
+                    const cat = (p.category || '').trim() || 'Без категории';
+                    if (!map[cat]) map[cat] = { cat, total: 0, new: 0, in_progress: 0, resolved: 0 };
+                    map[cat].total++;
+                    map[cat][st(p)]++;
+                });
+                return Object.values(map).sort((a, b) => b.total - a.total || a.cat.localeCompare(b.cat, 'ru'));
+            }
+            function toast(msg) {
+                const t = document.getElementById('adminToast');
+                if (!t) return;
+                t.textContent = msg;
+                t.style.display = 'block';
+                clearTimeout(toast._t);
+                toast._t = setTimeout(() => { t.style.display = 'none'; }, 3000);
+            }
+            function statusTip(title, c) {
+                const total = c.new + c.in_progress + c.resolved;
+                return `${title}\nВсего: ${total}\n🔴 Новые: ${c.new}\n🟡 В работе: ${c.in_progress}\n🟢 Решено: ${c.resolved}`;
+            }
+
+            // ---------- data builders (shared by screen charts and PDF) ----------
+            function buildTimeline(list, rng) {
+                const now = new Date();
+                const buckets = [];
+                if (rng === '12m') {
+                    const p = parts(now);
+                    const y = +p.year, m = +p.month;
+                    for (let i = 11; i >= 0; i--) {
+                        let mm = m - i, yy = y;
+                        while (mm <= 0) { mm += 12; yy--; }
+                        buckets.push({ key: `${yy}-${String(mm).padStart(2, '0')}`, label: MONTHS[mm - 1], title: `${MONTHS[mm - 1]} ${yy}` });
+                    }
+                } else {
+                    const n = rng === '30d' ? 30 : 14;
+                    for (let i = n - 1; i >= 0; i--) {
+                        const p = parts(new Date(now.getTime() - i * 86400000));
+                        buckets.push({ key: `${p.year}-${p.month}-${p.day}`, label: `${p.day}.${p.month}`, title: `${p.day}.${p.month}.${p.year}` });
+                    }
+                }
+                const idx = {};
+                buckets.forEach((b, i) => { idx[b.key] = i; b.c = { new: 0, in_progress: 0, resolved: 0 }; });
+                list.forEach(p => {
+                    const d = createdOf(p);
+                    if (!d) return;
+                    const q = parts(d);
+                    const key = rng === '12m' ? `${q.year}-${q.month}` : `${q.year}-${q.month}-${q.day}`;
+                    if (idx[key] != null) buckets[idx[key]].c[st(p)]++;
+                });
+                return buckets.map(b => ({
+                    label: b.label,
+                    title: b.title,
+                    total: b.c.new + b.c.in_progress + b.c.resolved,
+                    segs: KEYS.map(k => ({ v: b.c[k], color: COL[k] })),
+                    tip: statusTip(b.title, b.c)
+                }));
+            }
+            function buildHours(list) {
+                const h = Array.from({ length: 24 }, () => ({ new: 0, in_progress: 0, resolved: 0 }));
+                list.forEach(p => { const d = createdOf(p); if (d) h[parts(d).hourNum][st(p)]++; });
+                return h.map((c, i) => {
+                    const hh = String(i).padStart(2, '0');
+                    const title = `${hh}:00–${String((i + 1) % 24).padStart(2, '0')}:00`;
+                    return { label: hh, title, total: c.new + c.in_progress + c.resolved, segs: KEYS.map(k => ({ v: c[k], color: COL[k] })), tip: statusTip(title, c) };
+                });
+            }
+            function buildRes(list) {
+                const hrs = list.map(resHours).filter(v => v != null);
+                const counts = RES_BUCKETS.map(() => 0);
+                hrs.forEach(v => { counts[RES_BUCKETS.findIndex(b => v < b.max)]++; });
+                const sorted = hrs.slice().sort((a, b) => a - b);
+                const median = sorted.length ? (sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2) : null;
+                return {
+                    n: hrs.length,
+                    median,
+                    items: RES_BUCKETS.map((b, i) => ({
+                        label: b.l, title: b.l, total: counts[i],
+                        segs: [{ v: counts[i], color: b.c }],
+                        tip: `Решено за ${b.l}: ${counts[i]} (${pct(counts[i], hrs.length)})`
+                    }))
+                };
+            }
+            function peakOf(items) {
+                return items.reduce((best, it) => (it.total > (best ? best.total : 0) ? it : best), null);
+            }
+
+            // ---------- screen renderers ----------
+            function renderCols(el, items, opts) {
+                opts = opts || {};
+                const max = Math.max(0, ...items.map(it => it.total));
+                if (!max) {
+                    el.innerHTML = `<div class="adm-chart-empty">${esc(opts.empty || 'Нет обращений для выбранного фильтра')}</div>`;
+                    return;
+                }
+                const top = niceMax(max);
+                const every = opts.labelEvery || 1;
+                const grid = [1, 0.5, 0].map(f => `<div style="top:${(1 - f) * 100}%"><span>${Math.round(top * f)}</span></div>`).join('');
+                const cols = items.map((it, i) => {
+                    const h = it.total ? Math.max(it.total / top * 100, 2.5) : 0;
+                    const segs = it.segs.filter(s => s.v > 0).map(s => `<div style="flex-grow:${s.v};background:${s.color}"></div>`).join('');
+                    return `<div class="adm-col" data-tip="${esc(it.tip)}">${it.total ? `<div class="adm-col-stack" style="height:${h}%;animation-delay:${Math.min(i * 18, 420)}ms">${segs}</div>` : ''}</div>`;
+                }).join('');
+                const labels = items.map((it, i) => `<span>${i % every === 0 ? esc(it.label) : ''}</span>`).join('');
+                el.innerHTML = `<div class="adm-cols"><div class="adm-cols-grid">${grid}</div>${cols}</div><div class="adm-col-labels">${labels}</div>`;
+            }
+
+            function renderDonut(list) {
+                const svg = document.getElementById('admChartStatus');
+                const legend = document.getElementById('admChartStatusLegend');
+                if (!svg || !legend) return;
+                const R = 60, C = 2 * Math.PI * R;
+                if (!svg.dataset.ready) {
+                    svg.innerHTML = `<circle cx="80" cy="80" r="${R}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="18"/>` +
+                        KEYS.map(k => `<circle class="adm-donut-seg" data-k="${k}" cx="80" cy="80" r="${R}" fill="none" stroke="${COL[k]}" stroke-width="18" transform="rotate(-90 80 80)" style="stroke-dasharray:0 ${C};stroke-dashoffset:0"/>`).join('') +
+                        `<text class="adm-donut-total" x="80" y="82" text-anchor="middle" id="admDonutTotal">0</text>` +
+                        `<text class="adm-donut-cap" x="80" y="100" text-anchor="middle">обращений</text>`;
+                    svg.dataset.ready = '1';
+                }
+                const c = countStatus(list);
+                const total = list.length;
+                let off = 0;
+                KEYS.forEach(k => {
+                    const seg = svg.querySelector(`[data-k="${k}"]`);
+                    const len = total ? c[k] / total * C : 0;
+                    const gap = (len > 0 && len < C - 0.01) ? Math.min(2, len / 2) : 0;
+                    seg.style.strokeDasharray = `${Math.max(len - gap, 0)} ${C}`;
+                    seg.style.strokeDashoffset = `${-off}`;
+                    seg.setAttribute('data-tip', `${ICO[k]} ${LBL[k]}: ${c[k]} (${pct(c[k], total)})`);
+                    off += len;
+                });
+                document.getElementById('admDonutTotal').textContent = total;
+                const avgEl = document.getElementById('adm-avg-time');
+                legend.innerHTML = KEYS.map(k =>
+                    `<div class="adm-legend-item" data-tip="${esc(`${LBL[k]}: ${c[k]} из ${total}`)}"><i style="background:${COL[k]}"></i>${LBL[k]}<b>${c[k]}</b><small>${pct(c[k], total)}</small></div>`
+                ).join('') +
+                    `<div class="adm-legend-foot">Процент решения: <b>${pct(c.resolved, total)}</b></div>` +
+                    `<div class="adm-legend-foot">Ср. время решения: <b>${esc(avgEl ? avgEl.textContent : '—')}</b></div>`;
+            }
+
+            function renderCats() {
+                const el = document.getElementById('admChartCats');
+                if (!el) return;
+                // All categories (respecting the status filter) so the active one can be compared & highlighted
+                const base = (adminAllProblems || []).filter(p => adminFilterStatus === 'all' || p.status === adminFilterStatus);
+                const cats = groupCats(base);
+                if (!cats.length) {
+                    el.innerHTML = '<div class="adm-chart-empty">Нет обращений для выбранного статуса</div>';
+                    return;
+                }
+                const max = cats[0].total;
+                el.innerHTML = '<div class="adm-hbars">' + cats.map((c, i) => {
+                    const active = adminFilterCat === c.cat ? ' is-active' : '';
+                    const segs = KEYS.filter(k => c[k]).map(k => `<div style="flex-grow:${c[k]};background:${COL[k]}"></div>`).join('');
+                    return `<div class="adm-hbar-row${active}" data-cat="${esc(c.cat)}" data-tip="${esc(statusTip(catLabel(c.cat), c))}">
+                        <div class="adm-hbar-top"><span>${esc(catLabel(c.cat))}</span><span><b>${c.total}</b> <small>${pct(c.total, base.length)}</small></span></div>
+                        <div class="adm-hbar-track"><div class="adm-hbar-fill" style="width:${Math.max(c.total / max * 100, 3)}%;animation-delay:${Math.min(i * 40, 400)}ms">${segs}</div></div>
+                    </div>`;
+                }).join('') + '</div>';
+            }
+
+            function renderTimeline(list) {
+                const el = document.getElementById('admChartTimeline');
+                if (!el) return;
+                const items = buildTimeline(list, range);
+                renderCols(el, items, { labelEvery: range === '30d' ? 3 : 1, empty: 'Нет обращений за выбранный период' });
+                const sum = items.reduce((a, it) => a + it.total, 0);
+                const peak = peakOf(items);
+                const sub = document.getElementById('admChartTimelineSub');
+                if (sub) sub.textContent = `За период: ${sum}` + (peak ? ` · пик: ${peak.title} (${peak.total})` : '');
+            }
+
+            function renderRes(list) {
+                const el = document.getElementById('admChartRes');
+                if (!el) return;
+                const r = buildRes(list);
+                renderCols(el, r.items, { empty: 'Нет решённых обращений с отметкой времени' });
+                const sub = document.getElementById('admChartResSub');
+                if (sub) sub.textContent = r.n ? `Решено: ${r.n} · медиана: ${fmtDur(r.median)}` : 'Распределение по скорости устранения';
+            }
+
+            function renderHours(list) {
+                const el = document.getElementById('admChartHours');
+                if (!el) return;
+                const items = buildHours(list);
+                renderCols(el, items, { labelEvery: 3 });
+                const peak = peakOf(items);
+                const sub = document.getElementById('admChartHoursSub');
+                if (sub) sub.textContent = peak ? `Пик активности: ${peak.title} (Ташкент)` : 'Время подачи обращений (Ташкент)';
+            }
+
+            // Entry point called (guarded) from adminApplyFilters()
+            window.adminRenderCharts = function (list) {
+                lastList = Array.isArray(list) ? list.slice() : [];
+                const today = parts(new Date());
+                const sig = [adminFilterStatus, adminFilterCat, range, `${today.year}-${today.month}-${today.day}`,
+                    (adminAllProblems || []).map(p => `${p.id}:${p.status}:${p.resolved_at || ''}`).join(',')].join('|');
+                // Skip identical re-renders from the 15s live refresh so animations don't replay needlessly
+                if (sig === lastSig) return;
+                lastSig = sig;
+
+                const f = currentFilterText();
+                const label = document.getElementById('admChartsFilterLabel');
+                if (label) label.textContent = `${f.cat} · ${f.status} · ${lastList.length} обращ.`;
+
+                renderDonut(lastList);
+                renderTimeline(lastList);
+                renderCats();
+                renderRes(lastList);
+                renderHours(lastList);
+            };
+
+            window.adminChartRange = function (btn) {
+                range = btn.dataset.range || '14d';
+                document.querySelectorAll('.adm-range-btn').forEach(b => b.classList.toggle('active', b === btn));
+                if (lastList) {
+                    try { renderTimeline(lastList); lastSig = ''; } catch (e) { console.warn('Admin charts:', e); }
+                }
+            };
+
+            // Category bar click → goes through the existing select + adminMapCategory() path
+            const catsEl = document.getElementById('admChartCats');
+            if (catsEl) {
+                catsEl.addEventListener('click', e => {
+                    const row = e.target.closest('.adm-hbar-row');
+                    const sel = catSelect();
+                    if (!row || !sel || typeof adminMapCategory !== 'function') return;
+                    const cat = row.getAttribute('data-cat');
+                    const target = adminFilterCat === cat ? 'all' : cat;
+                    if (!Array.from(sel.options).some(o => o.value === target)) {
+                        toast('ℹ️ Эта категория отсутствует в списке фильтра');
+                        return;
+                    }
+                    sel.value = target;
+                    adminMapCategory(sel);
+                });
+            }
+
+            // ---------- tooltip ----------
+            const tip = document.createElement('div');
+            tip.id = 'admChartTip';
+            document.body.appendChild(tip);
+            const chartsRoot = document.getElementById('admCharts');
+            if (chartsRoot) {
+                chartsRoot.addEventListener('mouseover', e => {
+                    const t = e.target.closest('[data-tip]');
+                    if (!t || !chartsRoot.contains(t)) return;
+                    tip.textContent = t.getAttribute('data-tip');
+                    tip.classList.add('show');
+                });
+                chartsRoot.addEventListener('mousemove', e => {
+                    if (!tip.classList.contains('show')) return;
+                    const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+                    const y = Math.max(e.clientY - tip.offsetHeight - 12, 8);
+                    tip.style.left = x + 'px';
+                    tip.style.top = y + 'px';
+                });
+                chartsRoot.addEventListener('mouseout', e => {
+                    const t = e.target.closest('[data-tip]');
+                    if (t && !t.contains(e.relatedTarget)) tip.classList.remove('show');
+                });
+            }
+
+            // ---------- export menu ----------
+            function closeExportMenu() {
+                const m = document.getElementById('adminExportMenu');
+                const b = document.getElementById('adminExportBtn');
+                if (m) m.classList.remove('open');
+                if (b) b.setAttribute('aria-expanded', 'false');
+            }
+            window.adminToggleExportMenu = function (e) {
+                if (e) e.stopPropagation();
+                const m = document.getElementById('adminExportMenu');
+                const b = document.getElementById('adminExportBtn');
+                const open = !m.classList.contains('open');
+                m.classList.toggle('open', open);
+                b.setAttribute('aria-expanded', String(open));
+            };
+            document.addEventListener('click', e => {
+                const w = document.getElementById('adminExportWrap');
+                if (w && !w.contains(e.target)) closeExportMenu();
+            });
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') closeExportMenu(); });
+
+            // ---------- report model (current filtered data + the numbers shown on screen) ----------
+            function buildReport() {
+                const list = lastList || [];
+                const f = currentFilterText();
+                const c = countStatus(list);
+                const kpi = id => { const el = document.getElementById(id); return el ? el.textContent : '—'; };
+                const now = new Date();
+                const p = parts(now);
+                const catSlug = adminFilterCat === 'all' ? 'все_категории' : String(adminFilterCat).replace(/[^\wа-яё]+/gi, '_');
+                return {
+                    list, c, total: list.length, filter: f,
+                    generated: adminFormatDate(now.toISOString()),
+                    fileBase: `Vaisperia_отчет_${catSlug}_${p.year}-${p.month}-${p.day}_${String(p.hourNum).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`,
+                    cats: groupCats(list),
+                    kpis: [
+                        ['Всего обращений', String(list.length)],
+                        ['🔴 Новые', String(c.new)],
+                        ['🟡 В работе', String(c.in_progress)],
+                        ['🟢 Решено', String(c.resolved)],
+                        ['Процент решения', pct(c.resolved, list.length)],
+                        ['Ср. время решения', kpi('adm-avg-time')],
+                        ['Сегодня: новые / в работе', kpi('adm-today-new')],
+                        ['Сегодня: решено', kpi('adm-today-res')],
+                        ['За месяц (активные)', kpi('adm-month-new')],
+                        ['За год (активные)', kpi('adm-year-new')]
+                    ]
+                };
+            }
+            function ensureData() {
+                if (!lastList) { toast('⏳ Данные ещё загружаются, попробуйте через пару секунд'); return false; }
+                return true;
+            }
+            function download(blob, name) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
+            }
+
+            // ---------- CSV (Excel) ----------
+            function csvCell(v) {
+                if (typeof v === 'number') return isFinite(v) ? String(v).replace('.', ',') : '';
+                let s = v == null ? '' : String(v);
+                if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; // guard against spreadsheet formula injection
+                if (/[";\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+                return s;
+            }
+            window.adminExportCsv = function () {
+                closeExportMenu();
+                if (!ensureData()) return;
+                try {
+                    const r = buildReport();
+                    const rows = [];
+                    rows.push(['Vaisperia Executive — отчёт по обращениям граждан']);
+                    rows.push(['Сформирован', `${r.generated} (Asia/Tashkent)`]);
+                    rows.push(['Фильтр: категория', r.filter.cat]);
+                    rows.push(['Фильтр: статус', r.filter.status]);
+                    rows.push([]);
+                    rows.push(['КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ']);
+                    r.kpis.forEach(k => rows.push(k));
+                    rows.push([]);
+                    rows.push(['ПО КАТЕГОРИЯМ']);
+                    rows.push(['Категория', 'Всего', 'Новые', 'В работе', 'Решено', 'Доля']);
+                    r.cats.forEach(c => rows.push([c.cat, c.total, c.new, c.in_progress, c.resolved, pct(c.total, r.total)]));
+                    rows.push([]);
+                    rows.push(['РЕЕСТР ОБРАЩЕНИЙ']);
+                    rows.push(['ID', 'Категория', 'Статус', 'Описание', 'Автор', 'Создано', 'Решено', 'Время решения, ч', 'Широта', 'Долгота', 'Карта', 'Фото']);
+                    r.list.forEach(p => {
+                        const lat = parseFloat(p.latitude), lng = parseFloat(p.longitude);
+                        const h = resHours(p);
+                        rows.push([
+                            p.id, p.category || '—', LBL[st(p)], (p.description || '').trim(),
+                            p.username || p.user_id_name || 'Аноним',
+                            adminFormatDate(p.created_at || p.timestamp),
+                            st(p) === 'resolved' ? adminFormatDate(p.resolved_at) : '',
+                            h == null ? '' : Math.round(h * 10) / 10,
+                            isNaN(lat) ? '' : lat, isNaN(lng) ? '' : lng,
+                            isNaN(lat) || isNaN(lng) ? '' : `https://www.google.com/maps?q=${lat},${lng}`,
+                            p.photo_url || ''
+                        ]);
+                    });
+                    const csv = '\uFEFF' + rows.map(row => row.map(csvCell).join(';')).join('\r\n');
+                    download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `${r.fileBase}.csv`);
+                    toast(`📊 Excel-отчёт сформирован: ${r.total} обращ.`);
+                } catch (e) {
+                    console.error('CSV export failed:', e);
+                    toast('⚠️ Не удалось сформировать CSV');
+                }
+            };
+
+            // ---------- PDF (print-ready summary → "Save as PDF") ----------
+            function svgDonut(c, total) {
+                const R = 60, C = 2 * Math.PI * R;
+                let off = 0;
+                let s = `<svg viewBox="0 0 160 160" width="128" height="128" xmlns="http://www.w3.org/2000/svg"><circle cx="80" cy="80" r="${R}" fill="none" stroke="#f1f5f9" stroke-width="18"/>`;
+                KEYS.forEach(k => {
+                    const len = total ? c[k] / total * C : 0;
+                    if (len > 0) s += `<circle cx="80" cy="80" r="${R}" fill="none" stroke="${COL[k]}" stroke-width="18" stroke-dasharray="${len.toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 80 80)"/>`;
+                    off += len;
+                });
+                return s + `<text x="80" y="84" text-anchor="middle" font-size="28" font-weight="800" fill="#0f172a">${total}</text><text x="80" y="102" text-anchor="middle" font-size="9" fill="#64748b" letter-spacing="0.6">ОБРАЩЕНИЙ</text></svg>`;
+            }
+            function svgCols(items, W, H, empty) {
+                const max = Math.max(0, ...items.map(it => it.total));
+                if (!max) return `<div class="empty">${esc(empty || 'Нет данных')}</div>`;
+                const padL = 22, padB = 14, padT = 6;
+                const top = niceMax(max), n = items.length, slot = (W - padL) / n, bw = Math.min(slot * 0.68, 24), ch = H - padB - padT;
+                let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg">`;
+                [0, 0.5, 1].forEach(f => {
+                    const y = (padT + ch * (1 - f)).toFixed(1);
+                    s += `<line x1="${padL}" x2="${W}" y1="${y}" y2="${y}" stroke="#e2e8f0"${f ? ' stroke-dasharray="3 3"' : ''}/>` +
+                        `<text x="${padL - 4}" y="${(+y + 3).toFixed(1)}" font-size="8" text-anchor="end" fill="#94a3b8">${Math.round(top * f)}</text>`;
+                });
+                const every = Math.ceil(n / 15);
+                items.forEach((it, i) => {
+                    const x = padL + slot * i + (slot - bw) / 2;
+                    let y = padT + ch;
+                    it.segs.forEach(sg => {
+                        if (!sg.v) return;
+                        const h = sg.v / top * ch;
+                        y -= h;
+                        s += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${sg.color}"/>`;
+                    });
+                    if (i % every === 0) s += `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 3}" font-size="7.5" text-anchor="middle" fill="#64748b">${esc(it.label)}</text>`;
+                });
+                return s + '</svg>';
+            }
+            function buildPdfHtml(r) {
+                const rangeLbl = range === '12m' ? '12 месяцев' : range === '30d' ? '30 дней' : '14 дней';
+                const timeline = buildTimeline(r.list, range);
+                const hours = buildHours(r.list);
+                const res = buildRes(r.list);
+                const maxCat = r.cats.length ? r.cats[0].total : 1;
+                const legend = KEYS.map(k => `<div class="lg"><i style="background:${COL[k]}"></i>${LBL[k]}<b>${r.c[k]}</b><span>${pct(r.c[k], r.total)}</span></div>`).join('');
+                const catsHtml = r.cats.length ? r.cats.map(c => `<div class="cb"><div class="cbt"><span>${esc(catLabel(c.cat))}</span><b>${c.total} · ${pct(c.total, r.total)}</b></div><div class="cbtrack"><div class="cbfill" style="width:${Math.max(c.total / maxCat * 100, 3)}%">${KEYS.map(k => c[k] ? `<i style="flex-grow:${c[k]};background:${COL[k]}"></i>` : '').join('')}</div></div></div>`).join('') : '<div class="empty">Нет данных</div>';
+                const stCls = { new: 'sn', in_progress: 'sp', resolved: 'sr' };
+                const rowsHtml = r.list.length ? r.list.map(p => {
+                    const d = (p.description || '').trim();
+                    const h = resHours(p);
+                    return `<tr><td><b>#${esc(p.id)}</b></td><td>${esc(p.category || '—')}</td><td><span class="st ${stCls[st(p)]}">${LBL[st(p)]}</span></td><td>${esc(d.substring(0, 140))}${d.length > 140 ? '…' : ''}</td><td>${esc(p.username || p.user_id_name || 'Аноним')}</td><td>${esc(adminFormatDate(p.created_at || p.timestamp))}</td><td>${h == null ? '—' : esc(fmtDur(h))}</td></tr>`;
+                }).join('') : '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:14px">Нет обращений для выбранного фильтра</td></tr>';
+                const kpiHtml = r.kpis.map(k => `<div class="kpi"><div class="l">${esc(k[0])}</div><div class="v">${esc(k[1])}</div></div>`).join('');
+
+                return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>${esc(r.fileBase)}</title>
+<style>
+@page { size: A4; margin: 12mm 11mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: 'Segoe UI', Inter, Roboto, Arial, sans-serif; color: #0f172a; margin: 0; font-size: 10.5px; }
+.hdr { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #10b981; padding-bottom: 10px; margin-bottom: 12px; }
+.brand { display: flex; gap: 10px; align-items: center; }
+.logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg,#0f5a3e,#0b1310); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 21px; }
+h1 { font-size: 17px; margin: 0; letter-spacing: -0.3px; }
+.sub { color: #059669; font-weight: 700; font-size: 9px; letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
+.meta { text-align: right; color: #475569; font-size: 9.5px; line-height: 1.55; }
+.chips { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.chip { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 9.5px; }
+.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-bottom: 12px; }
+.kpi { border: 1px solid #e2e8f0; border-radius: 9px; padding: 7px 9px; background: #fbfdfc; }
+.kpi .l { font-size: 8px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: .3px; }
+.kpi .v { font-size: 16px; font-weight: 800; margin-top: 2px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1.7fr; gap: 10px; margin-bottom: 10px; }
+.grid3 { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 9px 11px; break-inside: avoid; }
+h2 { font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 7px; color: #0f172a; display: flex; justify-content: space-between; }
+h2 small { color: #94a3b8; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.donut { display: flex; align-items: center; gap: 12px; }
+.lgs { flex: 1; }
+.lg { display: flex; align-items: center; gap: 6px; padding: 3px 0; color: #475569; }
+.lg i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.lg b { margin-left: auto; color: #0f172a; }
+.lg span { width: 38px; text-align: right; color: #64748b; }
+.lgf { margin-top: 5px; padding-top: 5px; border-top: 1px solid #e2e8f0; color: #475569; }
+.lgf b { color: #047857; }
+.cb { margin-bottom: 6px; }
+.cbt { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
+.cbtrack { height: 7px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+.cbfill { display: flex; height: 100%; border-radius: 4px; overflow: hidden; }
+.cbfill i { display: block; flex-basis: 0; height: 100%; }
+.mini { display: flex; gap: 8px; font-size: 8px; color: #64748b; font-weight: 500; }
+.mini i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 3px; }
+.empty { height: 90px; display: flex; align-items: center; justify-content: center; color: #94a3b8; border: 1px dashed #e2e8f0; border-radius: 8px; }
+.note { color: #64748b; font-size: 8.5px; margin-top: 4px; }
+h3 { font-size: 11px; margin: 0 0 6px; }
+table { width: 100%; border-collapse: collapse; font-size: 9px; }
+thead { display: table-header-group; }
+th { background: #0b1310; color: #fff; text-align: left; padding: 6px; font-weight: 600; }
+td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+tr { break-inside: avoid; }
+tbody tr:nth-child(even) td { background: #f8fafc; }
+.st { display: inline-block; padding: 1px 6px; border-radius: 6px; font-weight: 700; font-size: 8.5px; white-space: nowrap; }
+.sn { background: #fee2e2; color: #b91c1c; } .sp { background: #fef9c3; color: #a16207; } .sr { background: #dcfce7; color: #15803d; }
+.foot { margin-top: 12px; color: #94a3b8; font-size: 8.5px; text-align: center; }
+</style></head><body>
+<div class="hdr">
+  <div class="brand"><div class="logo">🏛️</div><div><h1>Vaisperia Executive — отчёт по обращениям</h1><div class="sub">Хокимият Нукуса · Мониторинг городской инфраструктуры</div></div></div>
+  <div class="meta">Сформирован: <b>${esc(r.generated)}</b><br>Часовой пояс: Asia/Tashkent<br>Записей в отчёте: <b>${r.total}</b></div>
+</div>
+<div class="chips"><span class="chip">${esc(r.filter.cat)}</span><span class="chip">${esc(r.filter.status)}</span><span class="chip">Динамика: ${rangeLbl}</span></div>
+<div class="kpis">${kpiHtml}</div>
+<div class="grid2">
+  <div class="card"><h2>Распределение по статусам</h2><div class="donut">${svgDonut(r.c, r.total)}<div class="lgs">${legend}<div class="lgf">Процент решения: <b>${pct(r.c.resolved, r.total)}</b></div></div></div></div>
+  <div class="card"><h2>Динамика обращений · ${rangeLbl} <span class="mini"><span><i style="background:${COL.new}"></i>Новые</span><span><i style="background:${COL.in_progress}"></i>В работе</span><span><i style="background:${COL.resolved}"></i>Решено</span></span></h2>${svgCols(timeline, 460, 150, 'Нет обращений за период')}</div>
+</div>
+<div class="grid3">
+  <div class="card"><h2>По категориям</h2>${catsHtml}</div>
+  <div class="card"><h2>Время решения <small>${res.n ? 'медиана ' + esc(fmtDur(res.median)) : ''}</small></h2>${svgCols(res.items, 230, 130, 'Нет решённых с отметкой времени')}</div>
+  <div class="card"><h2>Активность по часам</h2>${svgCols(hours, 230, 130, 'Нет данных')}</div>
+</div>
+<h3>Реестр обращений (${r.total})</h3>
+<table><thead><tr><th>ID</th><th>Категория</th><th>Статус</th><th>Описание</th><th>Автор</th><th>Создано</th><th>Решено за</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+<div class="foot">Vaisperia Executive · автоматически сформированная сводка по текущим фильтрам панели администратора</div>
+</body></html>`;
+            }
+            window.adminExportPdf = function () {
+                closeExportMenu();
+                if (!ensureData()) return;
+                let html;
+                try {
+                    html = buildPdfHtml(buildReport());
+                } catch (e) {
+                    console.error('PDF export failed:', e);
+                    toast('⚠️ Не удалось сформировать PDF-сводку');
+                    return;
+                }
+                const old = document.getElementById('admPrintFrame');
+                if (old) old.remove();
+                const frame = document.createElement('iframe');
+                frame.id = 'admPrintFrame';
+                frame.setAttribute('aria-hidden', 'true');
+                frame.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;';
+                document.body.appendChild(frame);
+                const doc = frame.contentWindow.document;
+                doc.open();
+                doc.write(html);
+                doc.close();
+                toast('📄 Откроется окно печати — выберите «Сохранить как PDF»');
+                setTimeout(() => {
+                    try {
+                        frame.contentWindow.focus();
+                        frame.contentWindow.print();
+                    } catch (e) {
+                        // Fallback: open the summary in a new tab and print from there
+                        const w = window.open('', '_blank');
+                        if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+                        else toast('⚠️ Разрешите всплывающие окна для экспорта PDF');
+                    }
+                }, 400);
+            };
+        })();
     </script>
 </body>
 </html>
