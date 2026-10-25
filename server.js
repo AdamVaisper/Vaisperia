@@ -853,6 +853,13 @@ app.post('/api/problems', (req, res, next) => {
   }
 });
 
+// 6. Department Telegram Mini App (isolated module, additive routes under /api/miniapp)
+try {
+  require('./miniApp').registerMiniApp(app, pool);
+} catch (miniErr) {
+  console.error('Mini App init error:', miniErr && miniErr.message);
+}
+
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Vaisperia Server running at http://0.0.0.0:${PORT}`);
 });

@@ -478,6 +478,13 @@ async function handleCallbackQuery(query) {
 async function handleIncomingMessage(msg) {
   try {
     const chatId = msg.chat.id;
+
+    // Mini App launcher command (additive; does not affect proof handling below)
+    if (typeof msg.text === 'string' && /^\/desk(@\w+)?(\s|$)/i.test(msg.text.trim())) {
+      await sendMiniAppLauncher(chatId);
+      return;
+    }
+
     const hasMedia = Boolean(msg.photo || msg.video || msg.document);
 
     if (!hasMedia) return;
@@ -567,8 +574,125 @@ function initTelegramBot(pool) {
   pollUpdates().catch(err => console.error('Telegram bot polling error:', err));
 }
 
+// ===================== Telegram Mini App integration (additive) =====================
+const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'vaisperia_dispatch_bot';
+const MINIAPP_SHORT_NAME = process.env.TELEGRAM_MINIAPP_SHORT_NAME || 'desk';
+
+// Department key -> Telegram group (khokimiyat also receives 'Другое' / unknown categories)
+const DEPT_CHATS = {
+  ubdd: CHAT_ROUTING['Дороги'],
+  water: CHAT_ROUTING['Вода'],
+  res: CHAT_ROUTING['Электричество'],
+  ecology: CHAT_ROUTING['Мусор'],
+  khokimiyat: CHAT_ROUTING['Здания']
+};
+const DEPT_TITLES = { ubdd: 'УБДД', water: 'Водоканал', res: 'РЭС', ecology: 'Экология', khokimiyat: 'Хокимият' };
+
+function getDeptByChatId(chatId) {
+  const id = String(chatId);
+  return Object.keys(DEPT_CHATS).find(k => String(DEPT_CHATS[k]) === id) || null;
+}
+
+async function sendMiniAppLauncher(chatId) {
+  const dept = getDeptByChatId(chatId);
+  if (!dept) {
+    await callTelegramApi('sendMessage', { chat_id: chatId, text: 'Эта группа не привязана ни к одной службе Vaisperia.' });
+    return;
+  }
+  const url = `https://t.me/${BOT_USERNAME}/${MINIAPP_SHORT_NAME}?startapp=${dept}`;
+  const res = await callTelegramApi('sendMessage', {
+    chat_id: chatId,
+    text: `🗂 <b>Очередь заявок — ${DEPT_TITLES[dept]}</b>\nОткройте рабочее приложение службы:`,
+    parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: [[{ text: '📋 Открыть очередь заявок', url }]] }
+  });
+  if (res && res.ok && res.result) {
+    // Best effort: pin so the launcher is always at hand (needs admin rights)
+    callTelegramApi('pinChatMessage', { chat_id: chatId, message_id: res.result.message_id, disable_notification: true }).catch(() => {});
+  }
+}
+
+// Update the original group card after a status change made in the Mini App
+async function syncCardStatus(problem, statusSuffix, status) {
+  if (!problem || !problem.telegram_message_id || !problem.telegram_chat_id) return;
+  const caption = buildMessageCaption(problem, statusSuffix);
+  const base = {
+    chat_id: problem.telegram_chat_id,
+    message_id: Number(problem.telegram_message_id),
+    parse_mode: 'HTML',
+    reply_markup: getInlineKeyboard(problem.id, status)
+  };
+  try {
+    const first = problem.photo_url ? 'editMessageCaption' : 'editMessageText';
+    const second = problem.photo_url ? 'editMessageText' : 'editMessageCaption';
+    let r = await callTelegramApi(first, first === 'editMessageCaption' ? { ...base, caption } : { ...base, text: caption });
+    if (!r || !r.ok) {
+      r = await callTelegramApi(second, second === 'editMessageCaption' ? { ...base, caption } : { ...base, text: caption });
+    }
+  } catch (e) {
+    console.error('[MiniApp] card sync failed:', e && e.message);
+  }
+  // Drop any pending in-chat proof request for this report once it is resolved elsewhere
+  if (status === 'resolved') {
+    const entry = pendingProofByReport[problem.id];
+    if (entry) {
+      if (pendingProofByChat[entry.chatId] === entry) delete pendingProofByChat[entry.chatId];
+      delete pendingProofByReport[problem.id];
+    }
+  }
+}
+
+// Stream a video file to a group via multipart sendVideo (no full buffering in RAM)
+function sendVideoFile(chatId, filePath, mimeType, caption, replyToMessageId) {
+  return new Promise((resolve, reject) => {
+    const boundary = '----VaisperiaBoundary' + Math.random().toString(36).substring(2);
+    const fields = { chat_id: String(chatId), caption, parse_mode: 'HTML', supports_streaming: 'true' };
+    if (replyToMessageId) {
+      fields.reply_parameters = JSON.stringify({ message_id: Number(replyToMessageId), allow_sending_without_reply: true });
+    }
+    let head = '';
+    Object.keys(fields).forEach(k => {
+      head += `--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${fields[k]}\r\n`;
+    });
+    head += `--${boundary}\r\nContent-Disposition: form-data; name="video"; filename="proof.mp4"\r\nContent-Type: ${mimeType || 'video/mp4'}\r\n\r\n`;
+    const headBuf = Buffer.from(head);
+    const tailBuf = Buffer.from(`\r\n--${boundary}--\r\n`);
+    const size = fs.statSync(filePath).size;
+
+    const req = https.request({
+      hostname: 'api.telegram.org',
+      port: 443,
+      path: `/bot${TELEGRAM_BOT_TOKEN}/sendVideo`,
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': headBuf.length + size + tailBuf.length
+      }
+    }, (res) => {
+      let body = '';
+      res.on('data', c => body += c);
+      res.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
+    });
+    req.on('error', reject);
+    req.write(headBuf);
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', err => { req.destroy(err); reject(err); });
+    stream.on('end', () => { req.end(tailBuf); });
+    stream.pipe(req, { end: false });
+  });
+}
+
 module.exports = {
   sendReportToGroup,
-  initTelegramBot
+  initTelegramBot,
+  // Mini App helpers
+  TELEGRAM_BOT_TOKEN,
+  DEPT_CHATS,
+  DEPT_TITLES,
+  callTelegramApi,
+  escapeHtml,
+  formatTashkentDate,
+  syncCardStatus,
+  sendVideoFile
 };
 

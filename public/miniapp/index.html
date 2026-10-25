@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Vaisperia · Очередь заявок службы</title>
+<meta name="description" content="Рабочее приложение службы Vaisperia: очередь заявок граждан, перевод в работу и закрытие с видеодоказательством.">
+<meta name="robots" content="noindex">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b1310; --bg2: #111c18; --card: rgba(255,255,255,0.045); --line: rgba(255,255,255,0.08);
+  --text: #e8f1ec; --sub: #8fa59b; --accent: #2ecc71; --accent2: #10b981;
+  --red: #ef4444; --yellow: #f5b70a; --green: #22c55e; --radius: 16px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; }
+body { min-height: 100vh; padding-bottom: env(safe-area-inset-bottom); }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+
+.hdr { position: sticky; top: 0; z-index: 20; padding: 14px 16px 10px; background: linear-gradient(180deg, rgba(11,19,16,0.98), rgba(11,19,16,0.9)); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+.hdr-top { display: flex; align-items: center; gap: 10px; }
+.logo { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 19px; background: linear-gradient(135deg, #0f5a3e, #12805a); box-shadow: 0 6px 18px rgba(16,185,129,0.25); }
+.hdr h1 { font-size: 1.02rem; margin: 0; font-weight: 800; letter-spacing: -0.2px; }
+.hdr small { color: var(--sub); font-size: 0.74rem; }
+.refresh { margin-left: auto; width: 36px; height: 36px; border-radius: 11px; background: var(--card); border: 1px solid var(--line); font-size: 16px; transition: transform .4s; }
+.refresh.spin { transform: rotate(360deg); }
+
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.tab { padding: 9px 4px; border-radius: 10px; font-size: 0.82rem; font-weight: 600; color: var(--sub); display: flex; align-items: center; justify-content: center; gap: 6px; transition: all .2s; }
+.tab .cnt { min-width: 20px; padding: 1px 6px; border-radius: 999px; font-size: 0.7rem; background: rgba(255,255,255,0.08); }
+.tab.active { color: #04130c; background: linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow: 0 4px 14px rgba(46,204,113,0.35); }
+.tab.active .cnt { background: rgba(0,0,0,0.18); }
+
+main { padding: 12px 14px 30px; }
+.hint { color: var(--sub); font-size: 0.75rem; margin: 2px 4px 10px; }
+.item { position: relative; display: flex; gap: 12px; width: 100%; text-align: left; padding: 12px; margin-bottom: 10px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); animation: rise .28s ease both; transition: transform .15s, border-color .2s; }
+.item:active { transform: scale(0.985); }
+.item.first { border-color: rgba(239,68,68,0.55); box-shadow: 0 0 0 1px rgba(239,68,68,0.2), 0 8px 24px rgba(239,68,68,0.12); }
+.thumb { width: 64px; height: 64px; flex: 0 0 64px; border-radius: 12px; object-fit: cover; background: #1a2a24; display: grid; place-items: center; font-size: 24px; }
+.body { min-width: 0; flex: 1; }
+.row1 { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: var(--sub); }
+.row1 b { color: var(--text); font-size: 0.86rem; }
+.pos { margin-left: auto; font-weight: 700; color: var(--sub); }
+.desc { margin: 4px 0 6px; font-size: 0.86rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: 0.72rem; color: var(--sub); }
+.wait { color: #fca5a5; font-weight: 600; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; }
+.b-new { background: rgba(239,68,68,0.15); color: #fca5a5; }
+.b-in_progress { background: rgba(245,183,10,0.15); color: #fcd34d; }
+.b-resolved, .b-archived { background: rgba(34,197,94,0.15); color: #86efac; }
+
+.empty { text-align: center; color: var(--sub); padding: 60px 20px; }
+.empty .ico { font-size: 44px; margin-bottom: 10px; }
+.skel { height: 88px; border-radius: var(--radius); margin-bottom: 10px; background: linear-gradient(90deg, var(--card) 25%, rgba(255,255,255,0.08) 50%, var(--card) 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+.err { margin: 40px 10px; padding: 18px; border-radius: var(--radius); background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fecaca; text-align: center; line-height: 1.45; }
+
+/* Detail sheet */
+.overlay { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.55); opacity: 0; pointer-events: none; transition: opacity .25s; }
+.overlay.open { opacity: 1; pointer-events: auto; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 92vh; overflow-y: auto; background: var(--bg2); border-radius: 22px 22px 0 0; border-top: 1px solid var(--line); padding: 10px 16px calc(18px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .32s cubic-bezier(.2,.8,.2,1); }
+.sheet.open { transform: translateY(0); }
+.grab { width: 40px; height: 4px; border-radius: 4px; background: rgba(255,255,255,0.2); margin: 0 auto 12px; }
+.sh-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.sh-title h2 { margin: 0; font-size: 1.1rem; }
+.close { margin-left: auto; width: 32px; height: 32px; border-radius: 10px; background: var(--card); }
+.photo { width: 100%; max-height: 240px; object-fit: cover; border-radius: 14px; display: block; cursor: zoom-in; transition: transform .2s; }
+.photo:active { transform: scale(0.98); }
+.zoom-hint { font-size: 0.7rem; color: var(--sub); margin: 5px 2px 12px; }
+.sec { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 10px; }
+.sec h3 { margin: 0 0 6px; font-size: 0.7rem; letter-spacing: .5px; text-transform: uppercase; color: var(--sub); }
+.sec p { margin: 0; font-size: 0.92rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.times { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.82rem; }
+.times span { display: block; color: var(--sub); font-size: 0.7rem; }
+.geo { display: flex; align-items: center; gap: 10px; }
+.geo code { font-size: 0.85rem; color: var(--text); }
+.btn { width: 100%; padding: 14px; border-radius: 14px; font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform .12s, opacity .2s; }
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.5; pointer-events: none; }
+.btn-map { background: rgba(66,133,244,0.14); color: #93b8ff; border: 1px solid rgba(66,133,244,0.35); margin-top: 10px; }
+.btn-take { background: linear-gradient(135deg, #f5b70a, #f59e0b); color: #1a1200; box-shadow: 0 6px 18px rgba(245,183,10,0.3); }
+.btn-resolve { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #04130c; box-shadow: 0 6px 18px rgba(46,204,113,0.3); }
+.btn-ghost { background: var(--card); border: 1px solid var(--line); margin-top: 8px; }
+
+.proof { border: 1.5px dashed rgba(46,204,113,0.45); border-radius: 14px; padding: 14px; text-align: center; margin-bottom: 10px; }
+.proof p { margin: 0 0 10px; font-size: 0.84rem; color: var(--sub); line-height: 1.45; }
+.proof video { width: 100%; max-height: 220px; border-radius: 12px; background: #000; margin-bottom: 8px; }
+.proof .fname { font-size: 0.74rem; color: var(--sub); margin-bottom: 10px; word-break: break-all; }
+.progress { height: 6px; border-radius: 6px; background: rgba(255,255,255,0.08); overflow: hidden; margin: 10px 0 4px; display: none; }
+.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .2s; }
+
+/* Lightbox */
+.lb { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0); display: flex; align-items: center; justify-content: center; pointer-events: none; transition: background .3s; touch-action: none; }
+.lb.open { background: rgba(0,0,0,0.94); pointer-events: auto; }
+.lb img { max-width: 100%; max-height: 100%; transform: scale(0.85); opacity: 0; transition: transform .32s cubic-bezier(.2,.8,.2,1), opacity .25s; will-change: transform; }
+.lb.open img { transform: scale(1); opacity: 1; }
+.lb .x { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.14); color: #fff; font-size: 20px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translate(-50%, 30px); z-index: 70; padding: 10px 16px; border-radius: 12px; background: #1c2b25; border: 1px solid var(--line); font-size: 0.85rem; opacity: 0; transition: all .25s; max-width: 90vw; text-align: center; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { to { background-position: -200% 0; } }
+</style>
+</head>
+<body>
+<header class="hdr">
+  <div class="hdr-top">
+    <div class="logo">🏛️</div>
+    <div>
+      <h1 id="deptTitle">Очередь заявок</h1>
+      <small id="userLine">Vaisperia · рабочее место службы</small>
+    </div>
+    <button class="refresh" id="refreshBtn" aria-label="Обновить">↻</button>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" id="tab-new" data-tab="new" role="tab">🔴 Новые <span class="cnt" id="cnt-new">·</span></button>
+    <button class="tab" id="tab-in_progress" data-tab="in_progress" role="tab">🟡 В работе <span class="cnt" id="cnt-in_progress">·</span></button>
+    <button class="tab" id="tab-resolved" data-tab="resolved" role="tab">🟢 Решённые <span class="cnt" id="cnt-resolved">·</span></button>
+  </nav>
+</header>
+
+<main id="list"></main>
+
+<div class="overlay" id="overlay"></div>
+<section class="sheet" id="sheet" aria-modal="true" role="dialog"></section>
+
+<div class="lb" id="lightbox"><button class="x" id="lbClose" aria-label="Закрыть">✕</button><img id="lbImg" alt="Фото заявки"></div>
+<input type="file" id="videoInput" accept="video/*" capture="environment" hidden>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) { tg.ready(); tg.expand(); try { tg.setHeaderColor('#0b1310'); tg.setBackgroundColor('#0b1310'); } catch (e) {} }
+  const initData = tg ? tg.initData : '';
+  const qs = new URLSearchParams(location.search);
+  const dept = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || qs.get('tgWebAppStartParam') || qs.get('dept') || '';
+  const MAX_MB = 50;
+  const CAT_ICON = { 'Дороги': '🛣️', 'Вода': '💧', 'Электричество': '⚡', 'Мусор': '🗑️', 'Здания': '🏢', 'Другое': '📌' };
+  const ST_LBL = { new: '🔴 Новая', in_progress: '🟡 В работе', resolved: '🟢 Решена', archived: '🟢 В архиве' };
+
+  let tab = 'new';
+  const cache = { new: [], in_progress: [], resolved: [] };
+  let current = null, videoFile = null, busy = false;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmt = v => { const d = new Date(v); return isNaN(d) ? '—' : d.toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+  const ago = v => { const m = Math.max(0, Math.round((Date.now() - new Date(v)) / 60000)); if (m < 60) return m + ' мин'; const h = Math.floor(m / 60); if (h < 24) return h + ' ч ' + (m % 60) + ' мин'; return Math.floor(h / 24) + ' д ' + (h % 24) + ' ч'; };
+  const mapUrl = p => `https://www.google.com/maps?q=${Number(p.latitude)},${Number(p.longitude)}`;
+  const haptic = t => { try { tg && tg.HapticFeedback && (t === 'ok' ? tg.HapticFeedback.notificationOccurred('success') : t === 'err' ? tg.HapticFeedback.notificationOccurred('error') : tg.HapticFeedback.impactOccurred('light')); } catch (e) {} };
+
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2800); }
+
+  async function api(path, opts = {}) {
+    const headers = Object.assign({ 'X-Telegram-Init-Data': initData, 'X-Miniapp-Dept': dept }, opts.headers || {});
+    const r = await fetch(path, Object.assign({}, opts, { headers }));
+    let data = {}; try { data = await r.json(); } catch (e) {}
+    if (!r.ok) throw new Error(data.error || 'Ошибка сервера');
+    return data;
+  }
+
+  function showError(msg) { $('list').innerHTML = `<div class="err">⚠️ ${esc(msg)}</div>`; }
+
+  async function loadTab(t, silent) {
+    if (!silent) $('list').innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>';
+    try {
+      const { items } = await api('/api/miniapp/reports?tab=' + t);
+      cache[t] = items;
+      $('cnt-' + t).textContent = items.length;
+      if (t === tab) render();
+    } catch (e) { if (t === tab) showError(e.message); }
+  }
+  function loadAll(silent) { ['new', 'in_progress', 'resolved'].forEach(t => loadTab(t, silent || t !== tab)); }
+
+  function render() {
+    const items = cache[tab];
+    const list = $('list');
+    if (!items.length) {
+      const m = { new: ['✨', 'Новых заявок нет — очередь пуста'], in_progress: ['🧰', 'Нет заявок в работе'], resolved: ['📦', 'Архив решённых пока пуст'] }[tab];
+      list.innerHTML = `<div class="empty"><div class="ico">${m[0]}</div>${m[1]}</div>`;
+      return;
+    }
+    const hint = tab === 'resolved' ? 'Последние закрытые заявки' : 'Очередь FIFO: сверху — самая ранняя нерешённая заявка';
+    list.innerHTML = `<div class="hint">${hint}</div>` + items.map((p, i) => {
+      const thumb = p.photo_url ? `<img class="thumb" src="${esc(p.photo_url)}" alt="" loading="lazy">` : `<div class="thumb">${CAT_ICON[p.category] || '📌'}</div>`;
+      const extra = tab === 'resolved' ? `<span>✅ ${fmt(p.resolved_at)}</span>` : `<span class="wait">⏱ ждёт ${ago(p.timestamp)}</span>`;
+      return `<button class="item${i === 0 && tab !== 'resolved' ? ' first' : ''}" data-id="${p.id}" style="animation-delay:${Math.min(i, 10) * 30}ms">
+        ${thumb}
+        <div class="body">
+          <div class="row1"><b>#${p.id}</b> · ${esc(p.category)}${tab !== 'resolved' ? `<span class="pos">№${i + 1}</span>` : ''}</div>
+          <div class="desc">${esc(p.description)}</div>
+          <div class="meta"><span>🕒 ${fmt(p.timestamp)}</span>${extra}</div>
+        </div></button>`;
+    }).join('');
+  }
+
+  function openSheet(p) {
+    current = p; videoFile = null;
+    const s = $('sheet');
+    const photo = p.photo_url ? `<img class="photo" id="detailPhoto" src="${esc(p.photo_url)}" alt="Фото проблемы"><div class="zoom-hint">🔍 Нажмите на фото для просмотра в полный размер</div>` : '';
+    let actions = '';
+    if (p.status === 'new') actions = `<button class="btn btn-take" id="takeBtn">🟡 Взять в работу</button>`;
+    if (p.status === 'in_progress') actions = `
+      <div class="proof" id="proofBox">
+        <p>🎥 Для закрытия заявки обязательно прикрепите <b>видео</b>, подтверждающее устранение проблемы (до ${MAX_MB} МБ).</p>
+        <div id="proofPreview"></div>
+        <button class="btn btn-ghost" id="pickVideoBtn">📹 Снять / выбрать видео</button>
+        <div class="progress" id="prog"><i id="progBar"></i></div>
+      </div>
+      <button class="btn btn-resolve" id="resolveBtn" disabled>✅ Отметить решённой</button>`;
+    s.innerHTML = `
+      <div class="grab"></div>
+      <div class="sh-title"><span class="badge b-${p.status}">${ST_LBL[p.status] || p.status}</span><h2>Заявка #${p.id}</h2><button class="close" id="closeSheet" aria-label="Закрыть">✕</button></div>
+      ${photo}
+      <div class="sec"><h3>${CAT_ICON[p.category] || '📌'} ${esc(p.category)} · Описание</h3><p>${esc(p.description)}</p></div>
+      <div class="sec"><h3>Время</h3><div class="times">
+        <div><span>Создана</span>${fmt(p.timestamp)}</div>
+        <div><span>${p.resolved_at ? 'Решена' : 'В очереди'}</span>${p.resolved_at ? fmt(p.resolved_at) : ago(p.timestamp)}</div>
+      </div></div>
+      <div class="sec"><h3>Геопозиция</h3>
+        <div class="geo">📍 <code>${Number(p.latitude).toFixed(6)}, ${Number(p.longitude).toFixed(6)}</code></div>
+        <button class="btn btn-map" id="mapBtn">🗺️ Открыть в Google Maps</button>
+      </div>
+      ${actions}`;
+    $('overlay').classList.add('open'); s.classList.add('open'); s.scrollTop = 0;
+    $('closeSheet').onclick = closeSheet;
+    $('mapBtn').onclick = () => { const u = mapUrl(p); tg && tg.openLink ? tg.openLink(u) : window.open(u, '_blank'); };
+    if ($('detailPhoto')) $('detailPhoto').onclick = () => openLightbox(p.photo_url);
+    if ($('takeBtn')) $('takeBtn').onclick = take;
+    if ($('pickVideoBtn')) $('pickVideoBtn').onclick = () => { $('videoInput').value = ''; $('videoInput').click(); };
+    if ($('resolveBtn')) $('resolveBtn').onclick = resolve;
+    if (tg && tg.BackButton) { tg.BackButton.show(); }
+    haptic();
+  }
+  function closeSheet() {
+    if (busy) return;
+    $('overlay').classList.remove('open'); $('sheet').classList.remove('open'); current = null;
+    const v = document.querySelector('#proofPreview video'); if (v && v.src) URL.revokeObjectURL(v.src);
+    if (tg && tg.BackButton) tg.BackButton.hide();
+  }
+
+  function openLightbox(src) { $('lbImg').src = src; $('lightbox').classList.add('open'); resetZoom(); }
+  function closeLightbox() { $('lightbox').classList.remove('open'); }
+
+  // Pinch / double-tap zoom for the lightbox
+  let z = { s: 1, x: 0, y: 0, d0: 0, s0: 1, px: 0, py: 0, lastTap: 0 };
+  function applyZoom() { $('lbImg').style.transform = z.s > 1 ? `translate(${z.x}px, ${z.y}px) scale(${z.s})` : ''; }
+  function resetZoom() { z.s = 1; z.x = 0; z.y = 0; $('lbImg').style.transform = ''; }
+  const lb = $('lightbox');
+  lb.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) { z.d0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); z.s0 = z.s; }
+    else if (e.touches.length === 1) { z.px = e.touches[0].clientX - z.x; z.py = e.touches[0].clientY - z.y; }
+  }, { passive: true });
+  lb.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && z.d0) { const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); z.s = Math.min(5, Math.max(1, z.s0 * d / z.d0)); applyZoom(); }
+    else if (e.touches.length === 1 && z.s > 1) { z.x = e.touches[0].clientX - z.px; z.y = e.touches[0].clientY - z.py; applyZoom(); }
+  }, { passive: true });
+  lb.addEventListener('touchend', e => { if (z.s <= 1) resetZoom(); z.d0 = 0; });
+  $('lbImg').addEventListener('click', e => {
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - z.lastTap < 300) { z.s > 1 ? resetZoom() : (z.s = 2.5, applyZoom()); }
+    z.lastTap = now;
+  });
+  lb.addEventListener('click', e => { if (e.target === lb) closeLightbox(); });
+  $('lbClose').onclick = closeLightbox;
+
+  async function take() {
+    if (busy || !current) return;
+    busy = true; const b = $('takeBtn'); b.disabled = true; b.textContent = '⏳ Обновляем статус…';
+    try {
+      await api(`/api/miniapp/reports/${current.id}/take`, { method: 'POST' });
+      haptic('ok'); toast(`Заявка #${current.id} взята в работу · группа обновлена`);
+      busy = false; closeSheet(); loadAll(true); loadTab(tab);
+    } catch (e) {
+      busy = false; haptic('err'); toast('⚠️ ' + e.message); b.disabled = false; b.textContent = '🟡 Взять в работу';
+      loadAll(true);
+    }
+  }
+
+  $('videoInput').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    if (!/^video\//i.test(f.type)) { toast('⚠️ Нужен именно видеофайл'); return; }
+    if (f.size > MAX_MB * 1024 * 1024) { toast(`⚠️ Видео больше ${MAX_MB} МБ`); return; }
+    videoFile = f;
+    const prev = $('proofPreview'); const old = prev.querySelector('video'); if (old) URL.revokeObjectURL(old.src);
+    prev.innerHTML = `<video src="${URL.createObjectURL(f)}" controls playsinline muted></video><div class="fname">🎞 ${esc(f.name)} · ${(f.size / 1048576).toFixed(1)} МБ</div>`;
+    $('pickVideoBtn').textContent = '🔁 Заменить видео';
+    $('resolveBtn').disabled = false;
+    haptic();
+  });
+
+  function resolve() {
+    if (busy || !current) return;
+    if (!videoFile) { toast('🎥 Сначала прикрепите видеодоказательство'); haptic('err'); return; }
+    busy = true;
+    const id = current.id, btn = $('resolveBtn'), prog = $('prog'), bar = $('progBar');
+    btn.disabled = true; $('pickVideoBtn').disabled = true; btn.textContent = '⏳ Загрузка видео…'; prog.style.display = 'block';
+    const fd = new FormData(); fd.append('video', videoFile, videoFile.name || 'proof.mp4');
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/miniapp/reports/${id}/resolve`);
+    xhr.setRequestHeader('X-Telegram-Init-Data', initData);
+    xhr.setRequestHeader('X-Miniapp-Dept', dept);
+    xhr.upload.onprogress = e => { if (e.lengthComputable) { const pc = Math.round(e.loaded / e.total * 100); bar.style.width = pc + '%'; if (pc >= 100) btn.textContent = '📨 Отправляем отчёт в группу…'; } };
+    xhr.onload = () => {
+      let data = {}; try { data = JSON.parse(xhr.responseText); } catch (e) {}
+      busy = false;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        haptic('ok'); toast(`✅ Заявка #${id} закрыта · отчёт отправлен в группу`);
+        closeSheet(); loadAll(true); loadTab(tab);
+      } else {
+        haptic('err'); toast('⚠️ ' + (data.error || 'Не удалось закрыть заявку'));
+        btn.disabled = false; $('pickVideoBtn').disabled = false; btn.textContent = '✅ Отметить решённой'; prog.style.display = 'none'; bar.style.width = '0';
+      }
+    };
+    xhr.onerror = () => { busy = false; haptic('err'); toast('⚠️ Сеть недоступна, статус не изменён'); btn.disabled = false; $('pickVideoBtn').disabled = false; btn.textContent = '✅ Отметить решённой'; prog.style.display = 'none'; };
+    xhr.send(fd);
+  }
+
+  // Events
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.tab === tab) return;
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b));
+    tab = b.dataset.tab; haptic();
+    cache[tab].length ? (render(), loadTab(tab, true)) : loadTab(tab);
+  }));
+  $('list').addEventListener('click', e => {
+    const el = e.target.closest('.item'); if (!el) return;
+    const p = cache[tab].find(x => String(x.id) === el.dataset.id); if (p) openSheet(p);
+  });
+  $('overlay').onclick = closeSheet;
+  $('refreshBtn').onclick = () => { const r = $('refreshBtn'); r.classList.add('spin'); setTimeout(() => r.classList.remove('spin'), 450); loadAll(); };
+  if (tg && tg.BackButton) tg.BackButton.onClick(() => { if ($('lightbox').classList.contains('open')) closeLightbox(); else closeSheet(); });
+
+  // Boot
+  if (!initData) { showError('Это приложение работает только внутри Telegram. Откройте его по кнопке «Открыть очередь заявок» в группе вашей службы (команда /desk).'); return; }
+  api('/api/miniapp/session').then(s => {
+    $('deptTitle').textContent = `Очередь · ${s.title}`;
+    $('userLine').textContent = `Сотрудник: ${s.user.name}`;
+    loadAll();
+    setInterval(() => { if (!busy && !current) loadAll(true); }, 30000);
+  }).catch(e => showError(e.message));
+})();
+</script>
+</body>
+</html>
