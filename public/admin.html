@@ -1059,6 +1059,22 @@
             #admChartStatus { margin: 0 auto; }
             .adm-export-menu { left: auto; right: 0; }
         }
+
+        /* ===== Print: force clean light mode ===== */
+        @media print {
+            html, body, body.admin-mode { background: #fff !important; color: #111827 !important; color-scheme: light; }
+            body.admin-mode *, body.admin-mode *::before, body.admin-mode *::after {
+                background-color: transparent !important; background-image: none !important;
+                color: #111827 !important; box-shadow: none !important; text-shadow: none !important;
+                backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+                border-color: #d1d5db !important;
+            }
+            body.admin-mode table { border-collapse: collapse !important; width: 100%; }
+            body.admin-mode th, body.admin-mode td { border: 1px solid #d1d5db !important; padding: 4px 6px; }
+            body.admin-mode th { background-color: #f3f4f6 !important; font-weight: 700; }
+            body.admin-mode svg, body.admin-mode canvas, body.admin-mode img { filter: none !important; }
+            .adm-export-wrap, .adm-export-menu, button, #admin-auth-overlay, #admPrintFrame { display: none !important; }
+        }
     </style>
 </head>
 <body class="admin-mode">
@@ -2272,19 +2288,14 @@
                     r.cats.forEach(c => rows.push([c.cat, c.total, c.new, c.in_progress, c.resolved, pct(c.total, r.total)]));
                     rows.push([]);
                     rows.push(['РЕЕСТР ОБРАЩЕНИЙ']);
-                    rows.push(['ID', 'Категория', 'Статус', 'Описание', 'Автор', 'Создано', 'Решено', 'Время решения, ч', 'Широта', 'Долгота', 'Карта', 'Фото']);
+                    rows.push(['ID', 'Категория', 'Статус', 'Описание', 'Дата создания', 'Дата решения', 'Широта', 'Долгота']);
                     r.list.forEach(p => {
                         const lat = parseFloat(p.latitude), lng = parseFloat(p.longitude);
-                        const h = resHours(p);
                         rows.push([
                             p.id, p.category || '—', LBL[st(p)], (p.description || '').trim(),
-                            p.username || p.user_id_name || 'Аноним',
                             adminFormatDate(p.created_at || p.timestamp),
                             st(p) === 'resolved' ? adminFormatDate(p.resolved_at) : '',
-                            h == null ? '' : Math.round(h * 10) / 10,
-                            isNaN(lat) ? '' : lat, isNaN(lng) ? '' : lng,
-                            isNaN(lat) || isNaN(lng) ? '' : `https://www.google.com/maps?q=${lat},${lng}`,
-                            p.photo_url || ''
+                            isNaN(lat) ? '' : lat, isNaN(lng) ? '' : lng
                         ]);
                     });
                     const csv = '\uFEFF' + rows.map(row => row.map(csvCell).join(';')).join('\r\n');
@@ -2353,10 +2364,11 @@
 <style>
 @page { size: A4; margin: 12mm 11mm; }
 * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { font-family: 'Segoe UI', Inter, Roboto, Arial, sans-serif; color: #0f172a; margin: 0; font-size: 10.5px; }
+html, body { background: #fff !important; color-scheme: light; }
+body { font-family: 'Segoe UI', Inter, Roboto, Arial, sans-serif; color: #111827; margin: 0; font-size: 10.5px; }
 .hdr { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #10b981; padding-bottom: 10px; margin-bottom: 12px; }
 .brand { display: flex; gap: 10px; align-items: center; }
-.logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg,#0f5a3e,#0b1310); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 21px; }
+.logo { width: 40px; height: 40px; border-radius: 10px; background: #fff; border: 1.5px solid #10b981; color: #111827; display: flex; align-items: center; justify-content: center; font-size: 21px; }
 h1 { font-size: 17px; margin: 0; letter-spacing: -0.3px; }
 .sub { color: #059669; font-weight: 700; font-size: 9px; letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
 .meta { text-align: right; color: #475569; font-size: 9.5px; line-height: 1.55; }
@@ -2391,8 +2403,8 @@ h2 small { color: #94a3b8; font-weight: 600; text-transform: none; letter-spacin
 h3 { font-size: 11px; margin: 0 0 6px; }
 table { width: 100%; border-collapse: collapse; font-size: 9px; }
 thead { display: table-header-group; }
-th { background: #0b1310; color: #fff; text-align: left; padding: 6px; font-weight: 600; }
-td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+th { background: #f3f4f6; color: #111827; text-align: left; padding: 6px; font-weight: 700; border: 1px solid #cbd5e1; border-bottom: 2px solid #475569; }
+td { padding: 5px 6px; border: 1px solid #e2e8f0; vertical-align: top; color: #1f2937; }
 tr { break-inside: avoid; }
 tbody tr:nth-child(even) td { background: #f8fafc; }
 .st { display: inline-block; padding: 1px 6px; border-radius: 6px; font-weight: 700; font-size: 8.5px; white-space: nowrap; }
