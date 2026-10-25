@@ -2355,9 +2355,9 @@
                 const stCls = { new: 'sn', in_progress: 'sp', resolved: 'sr' };
                 const rowsHtml = r.list.length ? r.list.map(p => {
                     const d = (p.description || '').trim();
-                    const h = resHours(p);
-                    return `<tr><td><b>#${esc(p.id)}</b></td><td>${esc(p.category || '—')}</td><td><span class="st ${stCls[st(p)]}">${LBL[st(p)]}</span></td><td>${esc(d.substring(0, 140))}${d.length > 140 ? '…' : ''}</td><td>${esc(p.username || p.user_id_name || 'Аноним')}</td><td>${esc(adminFormatDate(p.created_at || p.timestamp))}</td><td>${h == null ? '—' : esc(fmtDur(h))}</td></tr>`;
-                }).join('') : '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:14px">Нет обращений для выбранного фильтра</td></tr>';
+                    const lat = parseFloat(p.latitude), lng = parseFloat(p.longitude);
+                    return `<tr><td><b>#${esc(p.id)}</b></td><td>${esc(p.category || '—')}</td><td><span class="st ${stCls[st(p)]}">${LBL[st(p)]}</span></td><td>${esc(d.substring(0, 140))}${d.length > 140 ? '…' : ''}</td><td>${esc(adminFormatDate(p.created_at || p.timestamp))}</td><td>${st(p) === 'resolved' && p.resolved_at ? esc(adminFormatDate(p.resolved_at)) : '—'}</td><td>${isNaN(lat) ? '—' : lat.toFixed(5)}</td><td>${isNaN(lng) ? '—' : lng.toFixed(5)}</td></tr>`;
+                }).join('') : '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:14px">Нет обращений для выбранного фильтра</td></tr>';
                 const kpiHtml = r.kpis.map(k => `<div class="kpi"><div class="l">${esc(k[0])}</div><div class="v">${esc(k[1])}</div></div>`).join('');
 
                 return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>${esc(r.fileBase)}</title>
@@ -2427,7 +2427,7 @@ tbody tr:nth-child(even) td { background: #f8fafc; }
   <div class="card"><h2>Активность по часам</h2>${svgCols(hours, 230, 130, 'Нет данных')}</div>
 </div>
 <h3>Реестр обращений (${r.total})</h3>
-<table><thead><tr><th>ID</th><th>Категория</th><th>Статус</th><th>Описание</th><th>Автор</th><th>Создано</th><th>Решено за</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+<table><thead><tr><th>ID</th><th>Категория</th><th>Статус</th><th>Описание</th><th>Дата создания</th><th>Дата решения</th><th>Широта</th><th>Долгота</th></tr></thead><tbody>${rowsHtml}</tbody></table>
 <div class="foot">Vaisperia Executive · автоматически сформированная сводка по текущим фильтрам панели администратора</div>
 </body></html>`;
             }
